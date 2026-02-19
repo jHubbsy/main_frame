@@ -20,5 +20,10 @@ cli.add_command(chat)
 cli.add_command(run)
 
 
+def quick_chat() -> None:
+    """Shortcut entrypoint: `computer` launches chat directly."""
+    chat(standalone_mode=True)
+
+
 if __name__ == "__main__":
     cli()

@@ -26,6 +26,7 @@ dev = [
 
 [project.scripts]
 mainframe = "mainframe.cli.app:cli"
+computer = "mainframe.cli.app:quick_chat"
 
 [tool.setuptools.packages.find]
 where = ["src"]
