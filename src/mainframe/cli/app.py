@@ -1,0 +1,24 @@
+"""Click CLI entrypoint for Mainframe."""
+
+from __future__ import annotations
+
+import click
+
+from mainframe.cli.commands.auth import auth
+from mainframe.cli.commands.chat import chat
+from mainframe.cli.commands.run import run
+
+
+@click.group()
+@click.version_option(package_name="mainframe")
+def cli() -> None:
+    """Mainframe — AI Agent Framework."""
+
+
+cli.add_command(auth)
+cli.add_command(chat)
+cli.add_command(run)
+
+
+if __name__ == "__main__":
+    cli()
