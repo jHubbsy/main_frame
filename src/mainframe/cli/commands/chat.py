@@ -88,6 +88,16 @@ async def _chat_loop(
     if not no_tools:
         tool_registry, tool_policy = _setup_tools(config.security.allowed_tool_groups)
 
+    # Skills setup — discover and inject into system prompt
+    from mainframe.skills.registry import SkillRegistry
+
+    skill_registry = SkillRegistry()
+    skill_registry.load()
+    system_prompt = config.system_prompt
+    skill_section = skill_registry.build_system_prompt_section()
+    if skill_section:
+        system_prompt = system_prompt + "\n" + skill_section
+
     # Session setup
     if session_id:
         session = Session(session_id=session_id)
@@ -111,7 +121,7 @@ async def _chat_loop(
         session=session,
         tool_registry=tool_registry,
         tool_policy=tool_policy,
-        system_prompt=config.system_prompt,
+        system_prompt=system_prompt,
         max_tokens=config.provider.max_tokens,
     )
 
