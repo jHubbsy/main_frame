@@ -29,6 +29,7 @@ Clean-room Python AI agent inspired by OpenClaw. Preserves good ideas (multi-tur
 - `core/events.py` — Typed EventBus (BeforeToolCall, AfterToolCall, TextDelta, etc.)
 - `tools/` — Tool protocol, registry, policy (allow/deny + permission groups), 6 builtins
 - `security/credentials.py` — Fernet-encrypted credential store, auto machine key, no password needed
+  - **Future hardening:** migrate to macOS Keychain (`keyring` package) so credentials are protected even if the agent is hijacked — current file-based master key is readable by any process running as the same user
 - `cli/` — Click entrypoint, chat REPL (prompt_toolkit + rich), single-shot run, auth management
 
 ## Phase 3 Plan: Memory

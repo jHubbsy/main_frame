@@ -25,7 +25,10 @@ def registry() -> ToolRegistry:
 
 
 def test_registry_has_all_builtins(registry: ToolRegistry):
-    expected = {"bash", "read_file", "write_file", "edit_file", "glob_search", "grep_search"}
+    expected = {
+        "bash", "read_file", "write_file", "edit_file",
+        "glob_search", "grep_search", "memory_search",
+    }
     assert set(registry.names) == expected
 
 

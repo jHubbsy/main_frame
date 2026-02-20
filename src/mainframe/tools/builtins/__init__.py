@@ -11,6 +11,7 @@ from mainframe.tools.builtins import (
     edit_file,
     glob_search,
     grep_search,
+    memory_search,
     read_file,
     write_file,
 )
@@ -30,7 +31,10 @@ class ModuleTool:
         return await self._execute(params, ctx)
 
 
-_BUILTIN_MODULES = [bash, read_file, write_file, edit_file, glob_search, grep_search]
+_BUILTIN_MODULES = [
+    bash, read_file, write_file, edit_file,
+    glob_search, grep_search, memory_search,
+]
 
 
 def register_builtins(registry: ToolRegistry) -> None:
