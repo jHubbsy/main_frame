@@ -57,3 +57,11 @@ class SkillError(MainframeError):
 
 class SandboxError(SkillError):
     """Sandbox execution errors."""
+
+
+class MCPError(MainframeError):
+    """MCP-related errors."""
+
+
+class MCPConnectionError(MCPError):
+    """Failed to connect to an MCP server."""

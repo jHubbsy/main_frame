@@ -8,6 +8,7 @@ from typing import Any
 from mainframe.tools.base import ToolContext, ToolResult
 from mainframe.tools.builtins import (
     bash,
+    connect_mcp,
     create_skill,
     edit_file,
     glob_search,
@@ -37,7 +38,7 @@ class ModuleTool:
 _BUILTIN_MODULES = [
     bash, read_file, write_file, edit_file,
     glob_search, grep_search, memory_search, create_skill,
-    web_fetch, web_search,
+    web_fetch, web_search, connect_mcp,
 ]
 
 

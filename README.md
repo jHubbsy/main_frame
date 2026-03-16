@@ -6,7 +6,7 @@ A secure, extensible AI agent framework built in Python. Multi-turn conversation
 
 **Agent Loop** — Turn-based conversation with automatic tool execution. The agent calls tools, processes results, and continues until it has a final answer.
 
-**10 Builtin Tools**
+**11 Builtin Tools**
 | Tool | Description |
 |------|-------------|
 | `bash` | Execute shell commands |
@@ -19,6 +19,7 @@ A secure, extensible AI agent framework built in Python. Multi-turn conversation
 | `create_skill` | Agent-authored skill generation |
 | `web_fetch` | HTTP GET with HTML-to-markdown conversion |
 | `web_search` | Web search via Brave Search API |
+| `connect_mcp` | Propose connecting to an MCP server (requires user approval) |
 
 **Hybrid Memory** — SQLite FTS5 keyword search + ChromaDB vector search, merged via Reciprocal Rank Fusion. Conversations are automatically indexed.
 
@@ -88,50 +89,73 @@ Check stored credentials:
 mainframe auth status
 ```
 
-## Usage
+## CLI Reference
 
-### Interactive Chat
-
-```bash
-mainframe chat
-# or use the shortcut:
-computer
-```
-
-**Chat options:**
-```bash
-mainframe chat --resume            # Resume last session
-mainframe chat --session-id <id>   # Resume specific session
-mainframe chat --model <model>     # Override model
-mainframe chat --no-tools          # Disable tool use
-mainframe chat --no-memory         # Disable memory indexing
-```
+| Command | Description |
+|---------|-------------|
+| `mainframe chat` | Start an interactive chat session |
+| `mainframe chat --resume` | Resume the most recent session |
+| `mainframe chat --session-id <id>` | Resume a specific session |
+| `mainframe chat --model <model>` | Override the model |
+| `mainframe chat --no-tools` | Disable tool use |
+| `mainframe chat --no-memory` | Disable memory indexing |
+| `mainframe run <prompt>` | Run a single prompt and exit |
+| `mainframe run <prompt> --raw` | Output raw text without formatting |
+| `mainframe run <prompt> --no-tools` | Disable tool use |
+| `mainframe auth login` | Set or update an API key (default: anthropic) |
+| `mainframe auth login --provider <name>` | Set key for a specific provider (e.g. `brave`) |
+| `mainframe auth logout` | Remove a stored API key |
+| `mainframe auth status` | Show which providers have stored keys |
+| `mainframe memory search <query>` | Search conversation history and facts |
+| `mainframe memory search <query> --limit <n>` | Limit search results (default: 5) |
+| `mainframe memory add <text>` | Add a fact to memory |
+| `mainframe memory add <text> --source <label>` | Add with custom source label |
+| `mainframe memory status` | Show memory system statistics |
+| `mainframe skills list` | List all discovered skills |
+| `mainframe skills install <path>` | Install a skill from a local directory |
+| `mainframe skills inspect <path>` | Inspect a SKILL.md file |
+| `mainframe skills audit` | Audit installed skills for security issues |
+| `mainframe mcp list` | List configured MCP servers and their tools |
+| `mainframe mcp test <server>` | Test connection to an MCP server |
+| `mainframe --version` | Show version |
+| `computer` | Shortcut for `mainframe chat` |
 
 **In-session commands:** `/tools`, `/session`, `/quit`
 
-### Single-Shot
+## MCP Integration
 
-```bash
-mainframe run "list all Python files in src/"
-mainframe run "explain this error" --raw     # Unformatted output
+Mainframe supports the [Model Context Protocol](https://modelcontextprotocol.io/) for connecting to external tool servers at runtime.
+
+### Static Configuration
+
+Pre-configure MCP servers in `~/.config/mainframe/config.toml`:
+
+```toml
+[mcp]
+enabled = true
+
+[mcp.servers.github]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
+env = { GITHUB_TOKEN = "ghp_..." }
+
+[mcp.servers.postgres]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
 ```
 
-### Memory
+Configured servers are connected at startup, and their tools are automatically registered and allowed by policy.
 
-```bash
-mainframe memory search "authentication"
-mainframe memory add "project uses JWT tokens"
-mainframe memory status
-```
+### Dynamic Connection (Human-in-the-Loop)
 
-### Skills
+The agent can propose connecting to MCP servers mid-conversation using the `connect_mcp` tool. This is a human-in-the-loop flow — no subprocess is spawned until you approve:
 
-```bash
-mainframe skills list
-mainframe skills install ./my-skill
-mainframe skills inspect ./my-skill
-mainframe skills audit
-```
+1. Agent calls `connect_mcp` with server name, command, args, and optional env vars
+2. After the agent's turn, you're prompted: `Connect to MCP server 'github' (npx @modelcontextprotocol/server-github)? [y/N]`
+3. If approved, Mainframe connects, discovers tools, registers them, and informs the agent
+4. If denied, the agent is told the request was rejected
+
+This prevents prompt injection from using MCP as an arbitrary command execution vector.
 
 ## Configuration
 
@@ -156,12 +180,12 @@ api_url = "https://example.com"
 src/mainframe/
   cli/           # Click CLI, chat REPL, display formatting
   config/        # Config schema, loader, paths
-  core/          # Agent loop, session persistence, event bus
+  core/          # Agent loop, session persistence, event bus, MCP client
   memory/        # SQLite FTS5, ChromaDB vectors, hybrid search
   providers/     # LLM provider abstraction (Anthropic SDK)
   security/      # Encrypted credential store
   skills/        # Manifest parser, loader, verifier, actions, registry
-  tools/         # Tool protocol, registry, policy, 10 builtins
+  tools/         # Tool protocol, registry, policy, 11 builtins, MCP adapter
 ```
 
 ## Development

@@ -29,7 +29,7 @@ def test_registry_has_all_builtins(registry: ToolRegistry):
     expected = {
         "bash", "read_file", "write_file", "edit_file",
         "glob_search", "grep_search", "memory_search", "create_skill",
-        "web_fetch", "web_search",
+        "web_fetch", "web_search", "connect_mcp",
     }
     assert set(registry.names) == expected
 

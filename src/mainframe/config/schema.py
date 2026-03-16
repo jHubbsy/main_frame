@@ -25,10 +25,22 @@ class SessionConfig(BaseModel):
     compact_threshold: int = 50
 
 
+class MCPServerConfig(BaseModel):
+    command: str
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
+
+
+class MCPConfig(BaseModel):
+    enabled: bool = True
+    servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
+
+
 class MainframeConfig(BaseModel):
     provider: ProviderConfig = Field(default_factory=ProviderConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     session: SessionConfig = Field(default_factory=SessionConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
     system_prompt: str = (
         "You are Mainframe, a capable AI assistant. "
         "You help users with software engineering tasks. "

@@ -6,6 +6,7 @@ import click
 
 from mainframe.cli.commands.auth import auth
 from mainframe.cli.commands.chat import chat
+from mainframe.cli.commands.mcp import mcp
 from mainframe.cli.commands.memory import memory
 from mainframe.cli.commands.run import run
 from mainframe.cli.commands.skills import skills
@@ -19,6 +20,7 @@ def cli() -> None:
 
 cli.add_command(auth)
 cli.add_command(chat)
+cli.add_command(mcp)
 cli.add_command(memory)
 cli.add_command(run)
 cli.add_command(skills)

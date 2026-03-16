@@ -23,13 +23,91 @@ from mainframe.config.loader import load_config
 from mainframe.config.paths import data_dir
 from mainframe.core.agent import AgentLoop
 from mainframe.core.events import Event, TextDelta
+from mainframe.core.mcp_client import MCPClientManager
 from mainframe.core.session import Session
 from mainframe.memory.manager import MemoryManager
 from mainframe.providers.registry import create_provider
 from mainframe.tools.builtins import register_builtins
+from mainframe.tools.builtins.connect_mcp import clear_pending_requests, get_pending_requests
 from mainframe.tools.builtins.memory_search import set_memory_manager
+from mainframe.tools.mcp_adapter import discover_and_register
 from mainframe.tools.policy import ToolPolicy
 from mainframe.tools.registry import ToolRegistry
+
+
+async def _process_mcp_requests(
+    agent: AgentLoop,
+    session: Session,
+    registry: ToolRegistry | None,
+    policy: ToolPolicy | None,
+    mcp_manager: MCPClientManager | None,
+) -> MCPClientManager | None:
+    """Check for pending MCP connection requests and prompt the user.
+
+    Returns the (possibly newly-created) MCPClientManager so the caller
+    can track it for cleanup.
+    """
+    from mainframe.config.schema import MCPServerConfig
+    from mainframe.providers.base import Message, Role
+
+    pending = get_pending_requests()
+    if not pending:
+        return mcp_manager
+
+    results: list[str] = []
+    for req in pending:
+        cmd_display = f"{req.command} {' '.join(req.args)}".strip()
+        approved = await asyncio.to_thread(
+            click.confirm,
+            f"\nConnect to MCP server '{req.server_name}' ({cmd_display})?",
+            default=False,
+        )
+
+        if not approved:
+            print_info(f"Denied connection to '{req.server_name}'.")
+            results.append(
+                f"[MCP] User denied connection to server '{req.server_name}'."
+            )
+            continue
+
+        # Lazily create the MCPClientManager if needed
+        if mcp_manager is None:
+            mcp_manager = MCPClientManager()
+
+        config = MCPServerConfig(
+            command=req.command,
+            args=req.args,
+            env=req.env,
+        )
+        try:
+            mcp_session = await mcp_manager.connect_server(req.server_name, config)
+            if mcp_session and registry:
+                tool_names = await discover_and_register(
+                    req.server_name, mcp_session, registry,
+                )
+                if policy:
+                    policy.allow_mcp_server(req.server_name)
+                print_info(
+                    f"MCP [{req.server_name}]: connected, {len(tool_names)} tool(s) registered."
+                )
+                results.append(
+                    f"[MCP] Connected to '{req.server_name}'. "
+                    f"Tools available: {', '.join(tool_names)}"
+                )
+        except Exception as e:
+            print_error(f"Failed to connect to '{req.server_name}': {e}")
+            results.append(
+                f"[MCP] Failed to connect to '{req.server_name}': {e}"
+            )
+
+    clear_pending_requests()
+
+    # Inject outcome as a user message so the agent knows what happened
+    if results:
+        outcome = "\n".join(results)
+        session.add_message(Message(role=Role.USER, content=outcome))
+
+    return mcp_manager
 
 
 def _setup_tools(allowed_groups: list[str]) -> tuple[ToolRegistry, ToolPolicy]:
@@ -87,6 +165,17 @@ async def _chat_loop(
     tool_policy = None
     if not no_tools:
         tool_registry, tool_policy = _setup_tools(config.security.allowed_tool_groups)
+
+    # MCP setup
+    mcp_manager: MCPClientManager | None = None
+    if not no_tools and config.mcp.enabled and config.mcp.servers and tool_registry:
+        mcp_manager = MCPClientManager()
+        connected = await mcp_manager.connect_all(config.mcp.servers)
+        for server_name, session in connected.items():
+            tool_names = await discover_and_register(server_name, session, tool_registry)
+            if tool_policy:
+                tool_policy.allow_mcp_server(server_name)
+            print_info(f"MCP [{server_name}]: {len(tool_names)} tool(s)")
 
     # Skills setup — discover, inject into system prompt, register action tools
     from mainframe.skills.registry import SkillRegistry
@@ -166,62 +255,71 @@ async def _chat_loop(
         history=FileHistory(str(history_file))
     )
 
-    while True:
-        try:
-            user_input = await asyncio.to_thread(
-                prompt_session.prompt, "\n> "
-            )
-        except (EOFError, KeyboardInterrupt):
-            print_info("\nGoodbye.")
-            break
+    try:
+        while True:
+            try:
+                user_input = await asyncio.to_thread(
+                    prompt_session.prompt, "\n> "
+                )
+            except (EOFError, KeyboardInterrupt):
+                print_info("\nGoodbye.")
+                break
 
-        user_input = user_input.strip()
-        if not user_input:
-            continue
+            user_input = user_input.strip()
+            if not user_input:
+                continue
 
-        if user_input.lower() in ("/quit", "/exit", "/q"):
-            print_info("Goodbye.")
-            break
+            if user_input.lower() in ("/quit", "/exit", "/q"):
+                print_info("Goodbye.")
+                break
 
-        if user_input.lower() == "/session":
-            print_session_info(session.session_id, session.meta.turn_count)
-            continue
+            if user_input.lower() == "/session":
+                print_session_info(session.session_id, session.meta.turn_count)
+                continue
 
-        if user_input.lower() == "/tools":
-            if tool_registry:
-                print_info(f"Tools: {', '.join(tool_registry.names)}")
-            else:
-                print_info("Tools disabled.")
-            continue
+            if user_input.lower() == "/tools":
+                if tool_registry:
+                    print_info(f"Tools: {', '.join(tool_registry.names)}")
+                else:
+                    print_info("Tools disabled.")
+                continue
 
-        try:
-            # Index user message
-            if memory_manager:
-                await _index_user_message(user_input)
+            try:
+                # Index user message
+                if memory_manager:
+                    await _index_user_message(user_input)
 
-            await agent.submit(user_input)
-            console.print()  # blank line before response
+                await agent.submit(user_input)
+                console.print()  # blank line before response
 
-            async for event in agent.run():
-                if event.type == "text_delta" and event.text:
-                    print_assistant_text(event.text, streaming=True)
-                elif event.type == "tool_result" and event.tool_call:
-                    print_tool_call(event.tool_call.name, event.tool_call.input)
-                    is_error = event.text.startswith(
-                        f"[{event.tool_call.name}] ERROR:"
-                    )
-                    content = (
-                        event.text.split("] ", 1)[-1]
-                        if "] " in event.text
-                        else event.text
-                    )
-                    print_tool_result(event.tool_call.name, content, is_error)
-                elif event.type == "message_stop" and event.usage:
-                    print_usage(event.usage.input_tokens, event.usage.output_tokens)
+                async for event in agent.run():
+                    if event.type == "text_delta" and event.text:
+                        print_assistant_text(event.text, streaming=True)
+                    elif event.type == "tool_result" and event.tool_call:
+                        print_tool_call(event.tool_call.name, event.tool_call.input)
+                        is_error = event.text.startswith(
+                            f"[{event.tool_call.name}] ERROR:"
+                        )
+                        content = (
+                            event.text.split("] ", 1)[-1]
+                            if "] " in event.text
+                            else event.text
+                        )
+                        print_tool_result(event.tool_call.name, content, is_error)
+                    elif event.type == "message_stop" and event.usage:
+                        print_usage(event.usage.input_tokens, event.usage.output_tokens)
 
-            # Index assistant response
-            if memory_manager:
-                await _index_assistant_response()
+                # Index assistant response
+                if memory_manager:
+                    await _index_assistant_response()
 
-        except Exception as e:
-            print_error(str(e))
+                # Process any pending MCP connection requests
+                mcp_manager = await _process_mcp_requests(
+                    agent, session, tool_registry, tool_policy, mcp_manager,
+                )
+
+            except Exception as e:
+                print_error(str(e))
+    finally:
+        if mcp_manager:
+            await mcp_manager.cleanup()
