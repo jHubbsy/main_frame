@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -27,7 +28,8 @@ def registry() -> ToolRegistry:
 def test_registry_has_all_builtins(registry: ToolRegistry):
     expected = {
         "bash", "read_file", "write_file", "edit_file",
-        "glob_search", "grep_search", "memory_search",
+        "glob_search", "grep_search", "memory_search", "create_skill",
+        "web_fetch", "web_search",
     }
     assert set(registry.names) == expected
 
@@ -92,3 +94,108 @@ async def test_bash(registry: ToolRegistry, ctx: ToolContext):
     result = await registry.execute("bash", {"command": "echo test123"}, ctx)
     assert not result.is_error
     assert "test123" in result.content
+
+
+@pytest.mark.asyncio
+async def test_create_skill(registry: ToolRegistry, tmp_path: Path):
+    ctx = ToolContext(session_id="test", workspace_dir=tmp_path)
+    # Monkey-patch skills_dir to use tmp_path
+    import mainframe.tools.builtins.create_skill as cs_mod
+
+    original = cs_mod.skills_dir
+    cs_mod.skills_dir = lambda: tmp_path / "skills"
+
+    try:
+        result = await registry.execute("create_skill", {
+            "skill_name": "test-gen",
+            "description": "A generated skill",
+            "body": "# Test\nGenerated skill.",
+        }, ctx)
+        assert not result.is_error
+        assert (tmp_path / "skills" / "test-gen" / "SKILL.md").exists()
+    finally:
+        cs_mod.skills_dir = original
+
+
+@pytest.mark.asyncio
+async def test_web_fetch(registry: ToolRegistry, ctx: ToolContext):
+    html_content = "<html><body><h1>Hello</h1><p>World</p></body></html>"
+    mock_response = AsyncMock()
+    mock_response.status_code = 200
+    mock_response.text = html_content
+    mock_response.headers = {"content-type": "text/html; charset=utf-8"}
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("mainframe.tools.builtins.web_fetch.httpx.AsyncClient", return_value=mock_client):
+        result = await registry.execute("web_fetch", {"url": "https://example.com"}, ctx)
+
+    assert not result.is_error
+    assert "Hello" in result.content
+    assert "World" in result.content
+
+
+@pytest.mark.asyncio
+async def test_web_fetch_truncation(registry: ToolRegistry, ctx: ToolContext):
+    mock_response = AsyncMock()
+    mock_response.status_code = 200
+    mock_response.text = "A" * 500
+    mock_response.headers = {"content-type": "text/plain"}
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("mainframe.tools.builtins.web_fetch.httpx.AsyncClient", return_value=mock_client):
+        result = await registry.execute(
+            "web_fetch", {"url": "https://example.com", "max_length": 100}, ctx,
+        )
+
+    assert not result.is_error
+    assert "truncated" in result.content
+
+
+@pytest.mark.asyncio
+async def test_web_search(registry: ToolRegistry, ctx: ToolContext):
+    brave_response = {
+        "web": {
+            "results": [
+                {
+                    "title": "Example Result",
+                    "url": "https://example.com",
+                    "description": "An example search result.",
+                },
+            ],
+        },
+    }
+    mock_response = AsyncMock()
+    mock_response.status_code = 200
+    mock_response.json = lambda: brave_response
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("mainframe.tools.builtins.web_search.httpx.AsyncClient", return_value=mock_client),
+        patch("mainframe.tools.builtins.web_search._get_brave_key", return_value="test-key"),
+    ):
+        result = await registry.execute("web_search", {"query": "test query"}, ctx)
+
+    assert not result.is_error
+    assert "Example Result" in result.content
+    assert "https://example.com" in result.content
+
+
+@pytest.mark.asyncio
+async def test_web_search_no_api_key(registry: ToolRegistry, ctx: ToolContext):
+    with patch("mainframe.tools.builtins.web_search._get_brave_key", return_value=None):
+        result = await registry.execute("web_search", {"query": "test"}, ctx)
+
+    assert result.is_error
+    assert "API key" in result.content

@@ -8,11 +8,13 @@ from dataclasses import dataclass, field
 GROUPS: dict[str, list[str]] = {
     "builtin": [
         "bash", "read_file", "write_file", "edit_file",
-        "glob_search", "grep_search", "memory_search",
+        "glob_search", "grep_search", "memory_search", "create_skill",
+        "web_fetch", "web_search",
     ],
     "filesystem": ["read_file", "write_file", "edit_file", "glob_search", "grep_search"],
     "shell": ["bash"],
     "memory": ["memory_search"],
+    "web": ["web_fetch", "web_search"],
     "readonly": ["read_file", "glob_search", "grep_search", "memory_search"],
 }
 

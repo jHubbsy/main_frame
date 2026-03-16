@@ -8,11 +8,14 @@ from typing import Any
 from mainframe.tools.base import ToolContext, ToolResult
 from mainframe.tools.builtins import (
     bash,
+    create_skill,
     edit_file,
     glob_search,
     grep_search,
     memory_search,
     read_file,
+    web_fetch,
+    web_search,
     write_file,
 )
 from mainframe.tools.registry import ToolRegistry
@@ -33,7 +36,8 @@ class ModuleTool:
 
 _BUILTIN_MODULES = [
     bash, read_file, write_file, edit_file,
-    glob_search, grep_search, memory_search,
+    glob_search, grep_search, memory_search, create_skill,
+    web_fetch, web_search,
 ]
 
 
