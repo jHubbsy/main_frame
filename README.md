@@ -46,6 +46,18 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+## Quick Start
+
+After installing, run the following to set your API key and start a chat session:
+
+```bash
+source .venv/bin/activate
+mainframe auth login          # Paste your Anthropic API key when prompted
+mainframe chat                # Start an interactive session
+```
+
+On first launch, Mainframe creates its data directories under `~/.local/share/mainframe/` and `~/.config/mainframe/`, initializes the memory stores, and drops you into an interactive REPL. Type a message, and the agent will respond — using tools autonomously as needed.
+
 ## Setup
 
 Set your API key (encrypted to disk on first run):
