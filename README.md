@@ -58,6 +58,8 @@ mainframe chat                # Start an interactive session
 
 On first launch, Mainframe creates its data directories under `~/.local/share/mainframe/` and `~/.config/mainframe/`, initializes the memory stores, and drops you into an interactive REPL. Type a message, and the agent will respond — using tools autonomously as needed.
 
+> **Note:** The first time memory is used, ChromaDB will download its embedding model (`all-MiniLM-L6-v2`, ~80MB) to `~/.cache/chroma/onnx_models/`. This is a one-time download — you'll see a progress bar in the terminal while it completes.
+
 ## Setup
 
 Set your API key (encrypted to disk on first run):
