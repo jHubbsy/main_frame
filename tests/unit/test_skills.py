@@ -109,3 +109,77 @@ def test_content_hash():
     assert h.startswith("sha256:")
     m.content_hash = h
     assert m.verify_content_hash() is True
+
+
+def _write_action(skill_dir: Path, action_name: str) -> Path:
+    """Write a minimal action module into a skill's actions/ dir."""
+    actions_dir = skill_dir / "actions"
+    actions_dir.mkdir(exist_ok=True)
+    code = f'''\
+name = "{action_name}"
+description = "Test action {action_name}"
+parameters = {{"type": "object", "properties": {{}}, "required": []}}
+
+async def execute(params, ctx):
+    from mainframe.tools.base import ToolResult
+    return ToolResult.success("{action_name} executed")
+'''
+    path = actions_dir / f"{action_name}.py"
+    path.write_text(code)
+    return path
+
+
+def test_discover_actions(tmp_path: Path):
+    from mainframe.skills.actions import discover_actions
+
+    skill_dir = _write_skill(tmp_path, "act-skill")
+    _write_action(skill_dir, "do_thing")
+    manifest = parse_skill_file(skill_dir / "SKILL.md")
+    actions = discover_actions(manifest)
+    assert len(actions) == 1
+    assert actions[0].name == "act-skill:do_thing"
+
+
+def test_skill_actions_registered_as_tools(tmp_path: Path):
+    from mainframe.tools.registry import ToolRegistry
+
+    skill_dir = _write_skill(tmp_path, "toolskill")
+    _write_action(skill_dir, "my_action")
+    registry = SkillRegistry()
+    registry.load(extra_dirs=[tmp_path])
+    assert "toolskill:my_action" in [a.name for a in registry.actions]
+
+    tool_reg = ToolRegistry()
+    registry.register_tools(tool_reg)
+    assert tool_reg.has("toolskill:my_action")
+
+
+def test_skill_config_override(tmp_path: Path):
+    _write_skill(tmp_path, "cfg-skill")
+    registry = SkillRegistry()
+    registry.load(
+        extra_dirs=[tmp_path],
+        skill_configs={"cfg-skill": {"api_url": "https://example.com"}},
+    )
+    skill = registry.get("cfg-skill")
+    assert skill is not None
+    assert skill.config["api_url"] == "https://example.com"
+
+
+def test_requires_warns_on_missing(tmp_path: Path):
+    skill_dir = tmp_path / "dep-skill"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text("""\
+---
+name: dep-skill
+version: "1.0.0"
+description: "Skill with deps"
+sandbox_tier: 1
+requires:
+  - nonexistent-thing
+---
+# dep-skill
+""")
+    registry = SkillRegistry()
+    registry.load(extra_dirs=[tmp_path])
+    assert any("nonexistent-thing" in w for w in registry.warnings)

@@ -34,3 +34,5 @@ class MainframeConfig(BaseModel):
         "You help users with software engineering tasks. "
         "Be concise, accurate, and helpful."
     )
+    # Per-skill config overrides: {"skill_name": {"key": "value"}}
+    skills: dict[str, dict[str, object]] = Field(default_factory=dict)

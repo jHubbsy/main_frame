@@ -9,9 +9,10 @@ Clean-room Python AI agent inspired by OpenClaw. Preserves good ideas (multi-tur
 |-------|------|--------|
 | 1 | Foundation — "It talks back" | **Done** |
 | 2 | Tool System — "It can do things" | **Done** |
-| 3 | Memory — "It remembers" | **Next** |
-| 4 | Skills — "It's extensible" | Pending |
-| 5 | Multi-Provider + Polish | Pending |
+| 3 | Memory — "It remembers" | **Done** |
+| 4 | Skills — "It's extensible" | **Done** |
+| 4.5 | Executable Actions + Agent Authoring | **Done** |
+| 5 | Multi-Provider + Polish | **Next** |
 
 ## Key Decisions Made
 - Python 3.14 (system has 3.14, not 3.12)
@@ -27,28 +28,20 @@ Clean-room Python AI agent inspired by OpenClaw. Preserves good ideas (multi-tur
 - `core/agent.py` — Turn-based loop: provider.complete() → tool execution → feed results → repeat until end_turn
 - `core/session.py` — JSONL persistence, session resume
 - `core/events.py` — Typed EventBus (BeforeToolCall, AfterToolCall, TextDelta, etc.)
-- `tools/` — Tool protocol, registry, policy (allow/deny + permission groups), 6 builtins
+- `tools/` — Tool protocol, registry, policy (allow/deny + permission groups), 8 builtins
 - `security/credentials.py` — Fernet-encrypted credential store, auto machine key, no password needed
   - **Future hardening:** migrate to macOS Keychain (`keyring` package) so credentials are protected even if the agent is hijacked — current file-based master key is readable by any process running as the same user
 - `cli/` — Click entrypoint, chat REPL (prompt_toolkit + rich), single-shot run, auth management
+- `memory/` — SQLite FTS5 + ChromaDB vector search, RRF hybrid merge, MemoryManager
+- `skills/` — SKILL.md manifests, YAML frontmatter, ed25519 verification, tiered sandbox, action system
 
-## Phase 3 Plan: Memory
-- `memory/sqlite_store.py` — SQLite FTS5 keyword search over transcripts/facts
-- `memory/vector_store.py` — ChromaDB embedded semantic search
-- `memory/hybrid.py` — Reciprocal Rank Fusion merge
-- `memory/manager.py` — file indexing, chunking, embedding, change detection
-- `tools/builtins/memory_search.py` — agent-callable memory search tool
-- Session compaction (summarize old messages near context limit)
-- `cli/commands/memory.py` — `mainframe memory search`, `mainframe memory status`
-- Done when: "what did we discuss yesterday about auth" returns a relevant answer
-
-## Phase 4 Plan: Skills
-- `skills/manifest.py` — SkillManifest, YAML frontmatter parser (SKILL.md)
-- `skills/loader.py` — disk discovery
-- `skills/verifier.py` — ed25519 signature verification
-- `skills/registry.py` — installed skills catalog, system prompt injection
-- `skills/sandbox.py` — Tier 1 (RestrictedPython + subprocess), Tier 2 (container)
-- `cli/commands/skills.py` — install, list, audit
+## Phase 4.5: Executable Actions + Agent Authoring
+- `skills/actions.py` — SkillAction wrapper, discover_actions() loads Python modules from actions/ dirs
+- `skills/registry.py` — discovers actions at load, registers them as tools, validates `requires` deps
+- `tools/builtins/create_skill.py` — agent can draft new skills (SKILL.md + action files) on disk
+- `config/schema.py` — per-skill config overrides via `[skills.skill-name]` in config.toml
+- `skills/github/actions/list_prs.py` — example action using gh CLI
+- Skill actions are namespaced as `skill_name:action_name` (e.g. `github:list_prs`)
 
 ## Phase 5 Plan: Multi-Provider + Polish
 - `providers/openai_compat.py` — OpenAI SDK wrapper with tool format translation
@@ -73,6 +66,6 @@ mainframe auth status # check stored keys
 ## Testing
 ```bash
 source .venv/bin/activate
-pytest tests/ -q       # 22 tests
+pytest tests/ -q       # 39 tests
 ruff check src/ tests/ # lint
 ```

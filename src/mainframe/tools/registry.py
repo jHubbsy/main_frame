@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mainframe.core.errors import ToolNotFoundError
 from mainframe.providers.base import ToolDefinition
 from mainframe.tools.base import Tool, ToolContext, ToolResult, validate_params
+
+if TYPE_CHECKING:
+    from mainframe.skills.actions import SkillAction
 
 
 class ToolRegistry:
@@ -17,6 +20,10 @@ class ToolRegistry:
 
     def register(self, tool: Tool) -> None:
         self._tools[tool.name] = tool
+
+    def register_skill_action(self, action: SkillAction) -> None:
+        """Register a SkillAction as a tool (duck-typed, same interface)."""
+        self._tools[action.name] = action  # type: ignore[assignment]
 
     def get(self, name: str) -> Tool:
         if name not in self._tools:

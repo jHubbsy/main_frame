@@ -26,6 +26,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -55,6 +56,8 @@ class SkillManifest:
     publisher: str | None = None
     body: str = ""  # the markdown content below the frontmatter
     path: Path | None = None  # path to the SKILL.md file
+    config: dict[str, Any] = field(default_factory=dict)  # skill-specific config defaults
+    requires: list[str] = field(default_factory=list)  # tool groups or skill names
 
     @property
     def is_signed(self) -> bool:
@@ -107,6 +110,8 @@ def parse_skill_file(path: Path) -> SkillManifest:
         publisher=data.get("publisher"),
         body=body.strip(),
         path=path,
+        config=data.get("config", {}),
+        requires=data.get("requires", []),
     )
 
 

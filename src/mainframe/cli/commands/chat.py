@@ -88,15 +88,24 @@ async def _chat_loop(
     if not no_tools:
         tool_registry, tool_policy = _setup_tools(config.security.allowed_tool_groups)
 
-    # Skills setup — discover and inject into system prompt
+    # Skills setup — discover, inject into system prompt, register action tools
     from mainframe.skills.registry import SkillRegistry
 
     skill_registry = SkillRegistry()
-    skill_registry.load()
+    skill_registry.load(skill_configs=config.skills)
+    for warning in skill_registry.warnings:
+        print_info(f"Warning: {warning}")
     system_prompt = config.system_prompt
     skill_section = skill_registry.build_system_prompt_section()
     if skill_section:
         system_prompt = system_prompt + "\n" + skill_section
+
+    # Register skill actions as tools and allow them in policy
+    if tool_registry and skill_registry.actions:
+        skill_registry.register_tools(tool_registry)
+        if tool_policy:
+            for action in skill_registry.actions:
+                tool_policy.allow(action.name)
 
     # Session setup
     if session_id:
