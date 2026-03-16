@@ -42,7 +42,7 @@ Clean-room Python AI agent inspired by OpenClaw. Preserves good ideas (multi-tur
 - `tools/builtins/create_skill.py` — agent can draft new skills (SKILL.md + action files) on disk
 - `config/schema.py` — per-skill config overrides via `[skills.skill-name]` in config.toml
 - `skills/github/actions/list_prs.py` — example action using gh CLI
-- Skill actions are namespaced as `skill_name:action_name` (e.g. `github:list_prs`)
+- Skill actions are namespaced as `skill_name__action_name` (e.g. `github__list_prs`)
 
 ## Phase 5 Plan: Multi-Provider + Polish
 - `providers/openai_compat.py` — OpenAI SDK wrapper with tool format translation

@@ -137,7 +137,7 @@ def test_discover_actions(tmp_path: Path):
     manifest = parse_skill_file(skill_dir / "SKILL.md")
     actions = discover_actions(manifest)
     assert len(actions) == 1
-    assert actions[0].name == "act-skill:do_thing"
+    assert actions[0].name == "act-skill__do_thing"
 
 
 def test_skill_actions_registered_as_tools(tmp_path: Path):
@@ -147,11 +147,11 @@ def test_skill_actions_registered_as_tools(tmp_path: Path):
     _write_action(skill_dir, "my_action")
     registry = SkillRegistry()
     registry.load(extra_dirs=[tmp_path])
-    assert "toolskill:my_action" in [a.name for a in registry.actions]
+    assert "toolskill__my_action" in [a.name for a in registry.actions]
 
     tool_reg = ToolRegistry()
     registry.register_tools(tool_reg)
-    assert tool_reg.has("toolskill:my_action")
+    assert tool_reg.has("toolskill__my_action")
 
 
 def test_skill_config_override(tmp_path: Path):

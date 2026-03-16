@@ -28,7 +28,7 @@ class SkillAction:
         self._module = module
         self._skill = skill
         # Prefix tool name with skill name to avoid collisions
-        self.name: str = f"{skill.name}:{module.name}"
+        self.name: str = f"{skill.name}__{module.name}"
         self.description: str = module.description
         self.parameters: dict[str, Any] = module.parameters
 
