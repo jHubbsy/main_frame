@@ -53,7 +53,33 @@ parameters: dict[str, Any] = {
                     "description": {"type": "string", "description": "Action description."},
                     "code": {
                         "type": "string",
-                        "description": "Python source for the action module.",
+                        "description": (
+                            "Python source for the action module. "
+                            "MUST follow the mainframe action protocol exactly:\n"
+                            "  1. Module-level: name: str\n"
+                            "  2. Module-level: description: str\n"
+                            "  3. Module-level: parameters: dict (JSON Schema object)\n"
+                            "  4. async def execute("
+                            "params: dict[str, Any], ctx: ToolContext"
+                            ") -> ToolResult\n"
+                            "     - Return ToolResult.success(str) or"
+                            " ToolResult.error(str).\n"
+                            "     - Import: from mainframe.tools.base"
+                            " import ToolContext, ToolResult\n"
+                            "Example skeleton:\n"
+                            "  from typing import Any\n"
+                            "  from mainframe.tools.base import"
+                            " ToolContext, ToolResult\n"
+                            "  name = 'my_action'\n"
+                            "  description = 'What this action does.'\n"
+                            "  parameters = {'type': 'object',"
+                            " 'properties': {'arg': {'type': 'string'}},"
+                            " 'required': ['arg']}\n"
+                            "  async def execute("
+                            "params: dict[str, Any], ctx: ToolContext"
+                            ") -> ToolResult:\n"
+                            "      return ToolResult.success(params['arg'])"
+                        ),
                     },
                 },
                 "required": ["name", "description", "code"],
