@@ -42,19 +42,16 @@ A secure, extensible AI agent framework built in Python. Multi-turn conversation
 ```bash
 git clone git@github.com:jHubbsy/main_frame.git
 cd main_frame
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+./install.sh
 ```
+
+The script will install [pipx](https://pipx.pypa.io) if needed (via Homebrew on macOS), install mainframe into an isolated environment, and prompt you to set your API key. Once complete, `mainframe` and `computer` are available globally — no virtual environment activation required.
 
 ## Quick Start
 
-After installing, run the following to set your API key and start a chat session:
-
 ```bash
-source .venv/bin/activate
-mainframe auth login          # Paste your Anthropic API key when prompted
-mainframe chat                # Start an interactive session
+mainframe chat    # interactive session
+computer          # shortcut for the above
 ```
 
 On first launch, Mainframe creates its data directories under `~/.local/share/mainframe/` and `~/.config/mainframe/`, initializes the memory stores, and drops you into an interactive REPL. Type a message, and the agent will respond — using tools autonomously as needed.
