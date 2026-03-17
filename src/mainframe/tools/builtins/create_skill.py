@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import importlib.util
+import inspect
+import shutil
+import sys
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from mainframe.config.paths import skills_dir
@@ -115,6 +121,54 @@ permissions:
 """
 
 
+def _validate_action_code(action_name: str, code: str) -> list[str]:
+    """Write action code to a temp file, import it, and validate the protocol.
+
+    Returns a list of error strings (empty = valid).
+    """
+    errors: list[str] = []
+    module_key = f"_mainframe_validate_{action_name}"
+
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
+        f.write(code)
+        tmp_path = Path(f.name)
+
+    try:
+        spec = importlib.util.spec_from_file_location(module_key, tmp_path)
+        if spec is None or spec.loader is None:
+            return [f"Action '{action_name}': cannot create module spec"]
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as e:
+            return [f"Action '{action_name}' failed to import: {e}"]
+
+        required_attrs = ("name", "description", "parameters", "execute")
+        for attr in required_attrs:
+            if not hasattr(module, attr):
+                errors.append(
+                    f"Action '{action_name}' is missing required attribute: '{attr}'"
+                )
+
+        if not errors:
+            if not isinstance(module.name, str):
+                errors.append(f"Action '{action_name}': 'name' must be a str")
+            if not isinstance(module.description, str):
+                errors.append(f"Action '{action_name}': 'description' must be a str")
+            if not isinstance(module.parameters, dict):
+                errors.append(f"Action '{action_name}': 'parameters' must be a dict")
+            if not inspect.iscoroutinefunction(module.execute):
+                errors.append(
+                    f"Action '{action_name}': 'execute' must be an async function"
+                )
+
+    finally:
+        tmp_path.unlink(missing_ok=True)
+        sys.modules.pop(module_key, None)
+
+    return errors
+
+
 async def execute(params: dict[str, Any], ctx: ToolContext) -> ToolResult:
     skill_name = params["skill_name"]
     description = params["description"]
@@ -124,7 +178,17 @@ async def execute(params: dict[str, Any], ctx: ToolContext) -> ToolResult:
     body = params["body"]
     actions: list[dict[str, str]] = params.get("actions", [])
 
-    # Write to user skills dir
+    # Validate all action code before touching disk
+    if actions:
+        all_errors: list[str] = []
+        for action in actions:
+            all_errors.extend(_validate_action_code(action["name"], action["code"]))
+        if all_errors:
+            return ToolResult.error(
+                "Action validation failed — skill was NOT created. Fix the following "
+                "and try again:\n" + "\n".join(f"  - {e}" for e in all_errors)
+            )
+
     target = skills_dir() / skill_name
     if target.exists():
         return ToolResult.error(
@@ -135,11 +199,9 @@ async def execute(params: dict[str, Any], ctx: ToolContext) -> ToolResult:
     try:
         target.mkdir(parents=True, exist_ok=True)
 
-        # Write SKILL.md
         skill_md = _build_skill_md(skill_name, description, version, sandbox_tier, bins, body)
         (target / "SKILL.md").write_text(skill_md)
 
-        # Write action files
         if actions:
             actions_dir = target / "actions"
             actions_dir.mkdir(exist_ok=True)
@@ -148,6 +210,9 @@ async def execute(params: dict[str, Any], ctx: ToolContext) -> ToolResult:
                 action_file.write_text(action["code"])
 
     except Exception as e:
+        # Clean up partial writes
+        if target.exists():
+            shutil.rmtree(target, ignore_errors=True)
         return ToolResult.error(f"Failed to create skill: {e}")
 
     parts = [f"Created skill '{skill_name}' at {target}"]
