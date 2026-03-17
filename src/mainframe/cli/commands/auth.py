@@ -9,7 +9,9 @@ import click
 from mainframe.cli.display import print_error, print_info
 from mainframe.security.credentials import (
     delete_api_key,
+    delete_mcp_oauth_tokens,
     get_api_key,
+    list_mcp_oauth_servers,
     list_stored_providers,
     update_api_key,
 )
@@ -58,10 +60,27 @@ def logout(provider: str) -> None:
 
 @auth.command(name="status")
 def auth_status() -> None:
-    """Show which providers have stored API keys."""
+    """Show stored API keys and MCP OAuth tokens."""
     providers = list_stored_providers()
     if providers:
+        print_info("API keys:")
         for p in providers:
             print_info(f"  {p}: configured")
     else:
         print_info("No API keys stored. Run: mainframe auth login")
+
+    mcp_servers = list_mcp_oauth_servers()
+    if mcp_servers:
+        print_info("MCP OAuth tokens:")
+        for s in mcp_servers:
+            print_info(f"  {s}: token stored")
+
+
+@auth.command(name="logout-mcp")
+@click.argument("server")
+def logout_mcp(server: str) -> None:
+    """Remove stored OAuth tokens for an MCP server."""
+    if delete_mcp_oauth_tokens(server):
+        print_info(f"OAuth tokens for MCP server '{server}' removed.")
+    else:
+        print_info(f"No stored OAuth tokens for '{server}'.")

@@ -203,3 +203,40 @@ def list_stored_providers() -> list[str]:
     store = _get_credential_store()
     keys = store.list_keys()
     return [k.removesuffix("_api_key") for k in keys if k.endswith("_api_key")]
+
+
+def get_mcp_env_var(server_name: str, var_name: str) -> str | None:
+    """Get a stored env var for an MCP server. Checks os.environ first, then credential store."""
+    env_value = os.environ.get(var_name)
+    if env_value:
+        return env_value
+    try:
+        store = _get_credential_store()
+        return store.get(f"mcp_{server_name}_{var_name}")
+    except Exception:
+        return None
+
+
+def store_mcp_env_var(server_name: str, var_name: str, value: str) -> None:
+    """Store an env var for an MCP server in the encrypted credential store."""
+    store = _get_credential_store()
+    store.set(f"mcp_{server_name}_{var_name}", value)
+
+
+def list_mcp_oauth_servers() -> list[str]:
+    """List MCP servers that have stored OAuth tokens."""
+    store = _get_credential_store()
+    keys = store.list_keys()
+    return [
+        k.removeprefix("mcp_").removesuffix("_oauth_token")
+        for k in keys
+        if k.startswith("mcp_") and k.endswith("_oauth_token")
+    ]
+
+
+def delete_mcp_oauth_tokens(server_name: str) -> bool:
+    """Remove stored OAuth tokens for an MCP server. Returns True if any existed."""
+    store = _get_credential_store()
+    removed = store.delete(f"mcp_{server_name}_oauth_token")
+    store.delete(f"mcp_{server_name}_oauth_client")
+    return removed

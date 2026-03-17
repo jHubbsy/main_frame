@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-
+import anyio
 import click
 
 from mainframe.cli.display import (
@@ -30,7 +29,9 @@ from mainframe.tools.registry import ToolRegistry
 @click.option("--no-tools", is_flag=True, help="Disable tool use.")
 def run(prompt: str, model: str | None, raw: bool, no_tools: bool) -> None:
     """Run a single prompt and exit."""
-    asyncio.run(_run(prompt, model_override=model, raw=raw, no_tools=no_tools))
+    async def _execute() -> None:
+        await _run(prompt, model_override=model, raw=raw, no_tools=no_tools)
+    anyio.run(_execute)
 
 
 async def _run(

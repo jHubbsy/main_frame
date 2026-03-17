@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
+import anyio
 import click
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
@@ -27,6 +28,7 @@ from mainframe.core.mcp_client import MCPClientManager
 from mainframe.core.session import Session
 from mainframe.memory.manager import MemoryManager
 from mainframe.providers.registry import create_provider
+from mainframe.security.credentials import get_mcp_env_var, store_mcp_env_var
 from mainframe.tools.builtins import register_builtins
 from mainframe.tools.builtins.connect_mcp import clear_pending_requests, get_pending_requests
 from mainframe.tools.builtins.memory_search import set_memory_manager
@@ -47,7 +49,7 @@ async def _process_mcp_requests(
     Returns the (possibly newly-created) MCPClientManager so the caller
     can track it for cleanup.
     """
-    from mainframe.config.schema import MCPServerConfig
+    from mainframe.config.schema import MCPOAuthConfig, MCPServerConfig
     from mainframe.providers.base import Message, Role
 
     pending = get_pending_requests()
@@ -56,10 +58,10 @@ async def _process_mcp_requests(
 
     results: list[str] = []
     for req in pending:
-        cmd_display = f"{req.command} {' '.join(req.args)}".strip()
+        display = req.url if req.url else f"{req.command} {' '.join(req.args)}".strip()
         approved = await asyncio.to_thread(
             click.confirm,
-            f"\nConnect to MCP server '{req.server_name}' ({cmd_display})?",
+            f"\nConnect to MCP server '{req.server_name}' ({display})?",
             default=False,
         )
 
@@ -74,10 +76,20 @@ async def _process_mcp_requests(
         if mcp_manager is None:
             mcp_manager = MCPClientManager()
 
+        # Resolve any required credentials before connecting
+        resolved_env = dict(req.env)
+        if req.required_env:
+            resolved = await _ensure_mcp_credentials(req.server_name, req.required_env)
+            resolved_env.update(resolved)
+
         config = MCPServerConfig(
-            command=req.command,
+            transport=req.transport,
+            command=req.command or None,
             args=req.args,
-            env=req.env,
+            env=resolved_env,
+            required_env=req.required_env,
+            url=req.url or None,
+            oauth=MCPOAuthConfig() if req.transport == "streamable_http" else None,
         )
         try:
             mcp_session = await mcp_manager.connect_server(req.server_name, config)
@@ -110,6 +122,37 @@ async def _process_mcp_requests(
     return mcp_manager
 
 
+async def _ensure_mcp_credentials(server_name: str, required_env: list[str]) -> dict[str, str]:
+    """Resolve required env vars from store or prompt the user. Returns resolved vars."""
+    resolved: dict[str, str] = {}
+    for var in required_env:
+        value = get_mcp_env_var(server_name, var)
+        if value:
+            resolved[var] = value
+            continue
+
+        print_info(f"MCP server '{server_name}' requires {var}.")
+        try:
+            import getpass
+            value = await asyncio.to_thread(getpass.getpass, f"  Enter {var}: ")
+        except (EOFError, KeyboardInterrupt):
+            print_info("\nSkipped.")
+            continue
+
+        value = value.strip()
+        if not value:
+            continue
+
+        save = await asyncio.to_thread(
+            click.confirm, f"  Save {var} for future connections?", default=True
+        )
+        if save:
+            store_mcp_env_var(server_name, var, value)
+
+        resolved[var] = value
+    return resolved
+
+
 def _setup_tools(allowed_groups: list[str]) -> tuple[ToolRegistry, ToolPolicy]:
     registry = ToolRegistry()
     register_builtins(registry)
@@ -131,10 +174,12 @@ def chat(
     no_memory: bool,
 ) -> None:
     """Start an interactive chat session."""
-    asyncio.run(_chat_loop(
-        resume=resume, session_id=session_id,
-        model_override=model, no_tools=no_tools, no_memory=no_memory,
-    ))
+    async def _run() -> None:
+        await _chat_loop(
+            resume=resume, session_id=session_id,
+            model_override=model, no_tools=no_tools, no_memory=no_memory,
+        )
+    anyio.run(_run)
 
 
 async def _chat_loop(
@@ -170,6 +215,11 @@ async def _chat_loop(
     mcp_manager: MCPClientManager | None = None
     if not no_tools and config.mcp.enabled and config.mcp.servers and tool_registry:
         mcp_manager = MCPClientManager()
+        # Resolve credentials for all configured servers before connecting
+        for server_name, server_config in config.mcp.servers.items():
+            if server_config.required_env:
+                resolved = await _ensure_mcp_credentials(server_name, server_config.required_env)
+                server_config.env.update(resolved)
         connected = await mcp_manager.connect_all(config.mcp.servers)
         for server_name, session in connected.items():
             tool_names = await discover_and_register(server_name, session, tool_registry)

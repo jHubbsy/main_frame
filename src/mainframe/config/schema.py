@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -25,10 +27,21 @@ class SessionConfig(BaseModel):
     compact_threshold: int = 50
 
 
+class MCPOAuthConfig(BaseModel):
+    redirect_port: int = 8765
+    scopes: list[str] = Field(default_factory=list)
+
+
 class MCPServerConfig(BaseModel):
-    command: str
+    transport: Literal["stdio", "streamable_http"] = "stdio"
+    # stdio fields
+    command: str | None = None
     args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
+    required_env: list[str] = Field(default_factory=list)
+    # HTTP fields
+    url: str | None = None
+    oauth: MCPOAuthConfig | None = None
 
 
 class MCPConfig(BaseModel):
