@@ -11,12 +11,22 @@ err_console = Console(stderr=True)
 
 
 def print_welcome() -> None:
+    logo = """[bold bright_cyan]███╗░░░███╗░█████╗░██╗███╗░░██╗███████╗██████╗░░█████╗░███╗░░░███╗███████╗
+████╗░████║██╔══██╗██║████╗░██║██╔════╝██╔══██╗██╔══██╗████╗░████║██╔════╝
+██╔████╔██║███████║██║██╔██╗██║█████╗░░██████╔╝███████║██╔████╔██║█████╗░░
+██║╚██╔╝██║██╔══██║██║██║╚████║██╔══╝░░██╔══██╗██╔══██║██║╚██╔╝██║██╔══╝░░
+██║░╚═╝░██║██║░░██║██║██║░╚███║██║░░░░░██║░░██║██║░░██║██║░╚═╝░██║███████╗
+╚═╝░░░░░╚═╝╚═╝░░╚═╝╚═╝╚═╝░░╚══╝╚═╝░░░░░╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░░░░╚═╝╚══════╝[/bold bright_cyan]
+
+[bright_yellow]▶[/bright_yellow] [bright_green]ARTIFICIAL INTELLIGENCE[/bright_green] [bright_cyan]•[/bright_cyan] [bright_magenta]AGENT FRAMEWORK[/bright_magenta] [bright_cyan]•[/bright_cyan] [bright_red]SYSTEM ONLINE[/bright_red] [bright_yellow]◀[/bright_yellow]
+[dim bright_blue]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/dim bright_blue]"""
+
     console.print(
         Panel(
-            "[bold]Mainframe[/bold] — AI Agent\n"
+            logo + "\n\n"
             "Type your message. Press [bold]Ctrl+D[/bold] to exit.",
-            border_style="blue",
-            padding=(0, 1),
+            border_style="bright_cyan",
+            padding=(1, 2),
         )
     )
 
