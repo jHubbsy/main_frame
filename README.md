@@ -102,7 +102,8 @@ mainframe auth status
 | `mainframe auth login` | Set or update an API key (default: anthropic) |
 | `mainframe auth login --provider <name>` | Set key for a specific provider (e.g. `brave`) |
 | `mainframe auth logout` | Remove a stored API key |
-| `mainframe auth status` | Show which providers have stored keys |
+| `mainframe auth logout-mcp <server>` | Remove stored OAuth/PAT tokens for an MCP server |
+| `mainframe auth status` | Show stored API keys and MCP credentials |
 | `mainframe memory search <query>` | Search conversation history and facts |
 | `mainframe memory search <query> --limit <n>` | Limit search results (default: 5) |
 | `mainframe memory add <text>` | Add a fact to memory |
@@ -123,6 +124,33 @@ mainframe auth status
 
 Mainframe supports the [Model Context Protocol](https://modelcontextprotocol.io/) for connecting to external tool servers at runtime.
 
+### Authentication
+
+MCP servers that require credentials are handled automatically. Credentials are stored in Mainframe's encrypted credential store — never in plaintext config files.
+
+Declare required env vars in your config:
+
+```toml
+[mcp.servers.github]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
+required_env = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+```
+
+At startup, Mainframe checks the credential store for each `required_env` entry. Any that are missing trigger a masked prompt. You'll be asked once whether to save each credential for future connections.
+
+To clear stored MCP credentials:
+
+```bash
+mainframe auth logout-mcp github
+```
+
+To see what's stored:
+
+```bash
+mainframe auth status
+```
+
 ### Static Configuration
 
 Pre-configure MCP servers in `~/.config/mainframe/config.toml`:
@@ -134,7 +162,7 @@ enabled = true
 [mcp.servers.github]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-github"]
-env = { GITHUB_TOKEN = "ghp_..." }
+required_env = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
 
 [mcp.servers.postgres]
 command = "npx"
@@ -143,14 +171,31 @@ args = ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/m
 
 Configured servers are connected at startup, and their tools are automatically registered and allowed by policy.
 
+### HTTP Transport + OAuth
+
+For MCP servers that expose an HTTP endpoint and support OAuth 2.0, use `streamable_http` transport:
+
+```toml
+[mcp.servers.my-server]
+transport = "streamable_http"
+url = "https://my-mcp-server.example.com"
+
+[mcp.servers.my-server.oauth]
+redirect_port = 8765
+scopes = ["read", "write"]
+```
+
+On first connection, Mainframe opens your browser for OAuth authentication. Tokens are stored encrypted and refreshed automatically.
+
 ### Dynamic Connection (Human-in-the-Loop)
 
 The agent can propose connecting to MCP servers mid-conversation using the `connect_mcp` tool. This is a human-in-the-loop flow — no subprocess is spawned until you approve:
 
-1. Agent calls `connect_mcp` with server name, command, args, and optional env vars
-2. After the agent's turn, you're prompted: `Connect to MCP server 'github' (npx @modelcontextprotocol/server-github)? [y/N]`
-3. If approved, Mainframe connects, discovers tools, registers them, and informs the agent
-4. If denied, the agent is told the request was rejected
+1. Agent calls `connect_mcp` with server name, command/url, and `required_env`
+2. After the agent's turn, you're prompted to approve the connection
+3. Any missing credentials are requested before the connection is made
+4. If approved, Mainframe connects, discovers tools, registers them, and informs the agent
+5. If denied, the agent is told the request was rejected
 
 This prevents prompt injection from using MCP as an arbitrary command execution vector.
 
