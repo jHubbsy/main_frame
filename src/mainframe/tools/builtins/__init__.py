@@ -13,6 +13,7 @@ from mainframe.tools.builtins import (
     edit_file,
     glob_search,
     grep_search,
+    image_analysis,
     memory_search,
     read_file,
     web_fetch,
@@ -38,7 +39,7 @@ class ModuleTool:
 _BUILTIN_MODULES = [
     bash, read_file, write_file, edit_file,
     glob_search, grep_search, memory_search, create_skill,
-    web_fetch, web_search, connect_mcp,
+    web_fetch, web_search, connect_mcp, image_analysis,
 ]
 
 

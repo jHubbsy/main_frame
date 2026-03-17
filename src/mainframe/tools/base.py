@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from mainframe.providers.base import Provider
 
 
 @dataclass
@@ -15,6 +18,7 @@ class ToolContext:
     workspace_dir: Path
     config: Any = None
     sandbox_tier: int = 0
+    provider: Provider | None = None
 
 
 @dataclass

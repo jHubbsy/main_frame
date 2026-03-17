@@ -6,8 +6,6 @@ import asyncio
 
 import anyio
 import click
-from prompt_toolkit import PromptSession
-from prompt_toolkit.history import FileHistory
 
 from mainframe.cli.display import (
     console,
@@ -20,6 +18,7 @@ from mainframe.cli.display import (
     print_usage,
     print_welcome,
 )
+from mainframe.cli.rich_input import RichInputHandler
 from mainframe.config.loader import load_config
 from mainframe.config.paths import data_dir
 from mainframe.core.agent import AgentLoop
@@ -27,6 +26,7 @@ from mainframe.core.events import Event, TextDelta
 from mainframe.core.mcp_client import MCPClientManager
 from mainframe.core.session import Session
 from mainframe.memory.manager import MemoryManager
+from mainframe.providers.base import ContentBlock, Message, Role
 from mainframe.providers.registry import create_provider
 from mainframe.security.credentials import get_mcp_env_var, store_mcp_env_var
 from mainframe.tools.builtins import register_builtins
@@ -299,24 +299,19 @@ async def _chat_loop(
     print_welcome()
     print_session_info(session.session_id, session.meta.turn_count)
 
-    # prompt_toolkit session for input history
     history_file = data_dir() / "chat_history"
-    prompt_session: PromptSession[str] = PromptSession(
-        history=FileHistory(str(history_file))
-    )
+    rich_handler = RichInputHandler(history_file=str(history_file))
 
     try:
         while True:
             try:
-                user_input = await asyncio.to_thread(
-                    prompt_session.prompt, "\n> "
-                )
+                rich_message = await rich_handler.get_input("\n> ")
             except (EOFError, KeyboardInterrupt):
                 print_info("\nGoodbye.")
                 break
 
-            user_input = user_input.strip()
-            if not user_input:
+            user_input = rich_message.text.strip()
+            if not user_input and not rich_message.has_images:
                 continue
 
             if user_input.lower() in ("/quit", "/exit", "/q"):
@@ -335,11 +330,24 @@ async def _chat_loop(
                 continue
 
             try:
-                # Index user message
-                if memory_manager:
+                # Index user message (text portion only)
+                if memory_manager and user_input:
                     await _index_user_message(user_input)
 
-                await agent.submit(user_input)
+                if rich_message.has_images:
+                    blocks: list[ContentBlock] = []
+                    if user_input:
+                        blocks.append(ContentBlock(type="text", text=user_input))
+                    for img in rich_message.images:
+                        blocks.append(ContentBlock(
+                            type="image",
+                            image_data=img.base64_data,
+                            image_mime_type=img.mime_type,
+                        ))
+                    await agent.submit_message(Message(role=Role.USER, content=blocks))
+                else:
+                    await agent.submit(user_input)
+
                 console.print()  # blank line before response
 
                 async for event in agent.run():

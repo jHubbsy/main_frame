@@ -69,11 +69,16 @@ class AgentLoop:
         return ToolContext(
             session_id=self._session.session_id,
             workspace_dir=self._workspace_dir,
+            provider=self._provider,
         )
 
     async def submit(self, user_input: str) -> None:
         """Add user message to the session."""
         self._session.add_message(Message(role=Role.USER, content=user_input))
+
+    async def submit_message(self, message: Message) -> None:
+        """Add a pre-built message to the session (supports multimodal content)."""
+        self._session.add_message(message)
 
     async def run(self) -> AsyncIterator[StreamEvent]:
         """Execute the agent loop, yielding stream events.

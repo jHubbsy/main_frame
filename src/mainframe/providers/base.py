@@ -19,12 +19,15 @@ class Role(StrEnum):
 class ContentBlock:
     """A single content block within a message."""
 
-    type: str  # "text", "tool_use", "tool_result"
+    type: str  # "text", "tool_use", "tool_result", "image"
     text: str | None = None
     tool_call_id: str | None = None
     tool_name: str | None = None
     tool_input: dict[str, Any] | None = None
     is_error: bool = False
+    # Image fields
+    image_data: str | None = None  # base64 encoded image data
+    image_mime_type: str | None = None  # MIME type (e.g., "image/png")
 
 
 @dataclass
