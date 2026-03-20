@@ -8,7 +8,15 @@ import sys
 import click
 
 from mainframe.cli.commands.chat import _ensure_mcp_credentials, _setup_tools
-from mainframe.cli.display import print_error, print_info
+from mainframe.cli.display import (
+    console,
+    print_assistant_text,
+    print_error,
+    print_info,
+    print_tool_call,
+    print_tool_result,
+    print_usage,
+)
 from mainframe.config.loader import load_config
 from mainframe.core.agent import AgentLoop
 from mainframe.core.mcp_client import MCPClientManager
@@ -40,8 +48,35 @@ def telegram(
 
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
-        print_error("TELEGRAM_BOT_TOKEN environment variable is not set.")
-        sys.exit(1)
+        try:
+            from mainframe.security.credentials import _get_credential_store
+            store = _get_credential_store()
+            token = store.get("telegram_bot_token")
+        except Exception:
+            token = None
+
+    if not token:
+        print_info("TELEGRAM_BOT_TOKEN environment variable is not set.")
+        print_info("To use this feature, you need the Telegram app: https://telegram.org/apps")
+        print_info("If you don't have a bot token, you can get one from https://t.me/BotFather")
+        try:
+            import getpass
+            token = getpass.getpass("  Enter Telegram Bot Token: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print_error("\nCancelled.")
+            sys.exit(1)
+            
+        if not token:
+            print_error("Token was not provided.")
+            sys.exit(1)
+            
+        try:
+            save = click.confirm("  Save Telegram Bot Token for future sessions?", default=True)
+            if save:
+                from mainframe.security.credentials import _get_credential_store
+                _get_credential_store().set("telegram_bot_token", token)
+        except Exception as e:
+            print_error(f"Failed to save token: {e}")
 
     async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if update.effective_message:
@@ -129,7 +164,24 @@ def telegram(
             if memory_manager:
                 await memory_manager.index_message(session_id, "user", user_text)
 
-            response_text = await agent.complete(user_text)
+            print_info(f"Message from {chat_id}: {user_text}")
+            await agent.submit(user_text)
+            
+            text_parts = []
+            async for event in agent.run():
+                if event.type == "text_delta" and event.text:
+                    print_assistant_text(event.text, streaming=True)
+                    text_parts.append(event.text)
+                elif event.type == "tool_result" and event.tool_call:
+                    print_tool_call(event.tool_call.name, event.tool_call.input)
+                    is_error = event.text.startswith(f"[{event.tool_call.name}] ERROR:")
+                    content = event.text.split("] ", 1)[-1] if "] " in event.text else event.text
+                    print_tool_result(event.tool_call.name, content, is_error)
+                elif event.type == "message_stop" and event.usage:
+                    print_usage(event.usage.input_tokens, event.usage.output_tokens)
+            console.print()
+
+            response_text = "".join(text_parts)
 
             if memory_manager:
                 await memory_manager.index_message(session_id, "assistant", response_text)
