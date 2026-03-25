@@ -29,6 +29,7 @@ from mainframe.memory.manager import MemoryManager
 from mainframe.providers.base import ContentBlock, Message, Role
 from mainframe.providers.registry import create_provider
 from mainframe.security.credentials import get_mcp_env_var, store_mcp_env_var
+from mainframe.security.sanitize import sanitize_user_input
 from mainframe.tools.builtins import register_builtins
 from mainframe.tools.builtins.connect_mcp import clear_pending_requests, get_pending_requests
 from mainframe.tools.builtins.memory_search import set_memory_manager
@@ -313,6 +314,11 @@ async def _chat_loop(
             user_input = rich_message.text.strip()
             if not user_input and not rich_message.has_images:
                 continue
+
+            if user_input:
+                scan = sanitize_user_input(user_input)
+                if scan.flagged:
+                    print_info(f"[security] Suspicious input patterns: {scan.patterns_found}")
 
             if user_input.lower() in ("/quit", "/exit", "/q"):
                 print_info("Goodbye.")
