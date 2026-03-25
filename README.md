@@ -199,6 +199,21 @@ The agent can propose connecting to MCP servers mid-conversation using the `conn
 
 This prevents prompt injection from using MCP as an arbitrary command execution vector.
 
+### AFFiNE Integration Prerequisites
+
+If you intend to use the `affine-mcp-server` to connect Mainframe to an [AFFiNE](https://affine.pro) workspace, please ensure you meet the following requirements before configuring the server:
+
+1. **Node.js**: Version 18 or higher is required to run the `affine-mcp-server` package via `npx`.
+2. **AFFiNE Instance**: You must have an active AFFiNE instance. The server supports both:
+   - **Cloud-hosted** (e.g., `app.affine.pro`)
+   - **Self-hosted** (e.g., via local Docker Compose)
+3. **Authentication**: Before Mainframe can access your workspace, you must authenticate the MCP server interactively:
+   ```bash
+   npx -y affine-mcp-server login
+   ```
+   - **For Cloud**: Follow the prompts to log in (email/password or API token).
+   - **For Self-Hosted**: When prompted for the "Affine URL", replace the default `https://app.affine.pro` with your self-hosted instance URL (e.g., `http://localhost:3010`), then proceed to log in with your local credentials.
+
 ## Configuration
 
 Config file at `~/.config/mainframe/config.toml`:
