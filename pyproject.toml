@@ -28,6 +28,9 @@ dev = [
     "pytest-asyncio>=0.24",
     "ruff>=0.5",
 ]
+telegram = [
+    "python-telegram-bot[job-queue]>=21.0",
+]
 
 [project.scripts]
 mainframe = "mainframe.cli.app:cli"
@@ -46,3 +49,5 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.setuptools_scm]

@@ -43,6 +43,8 @@ A secure, extensible AI agent framework built in Python. Multi-turn conversation
 git clone git@github.com:jHubbsy/main_frame.git
 cd main_frame
 ./install.sh
+# To install with Telegram bot support:
+# pipx inject mainframe ".[telegram]"
 ```
 
 The script will install [pipx](https://pipx.pypa.io) if needed (via Homebrew on macOS), install mainframe into an isolated environment, and prompt you to set your API key. Once complete, `mainframe` and `computer` are available globally — no virtual environment activation required.
@@ -78,6 +80,7 @@ Or use environment variables:
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 export BRAVE_API_KEY="BSA..."
+export TELEGRAM_BOT_TOKEN="123:abc..."
 ```
 
 Check stored credentials:
@@ -90,6 +93,7 @@ mainframe auth status
 
 | Command | Description |
 |---------|-------------|
+| `mainframe telegram` | Start the Telegram bot interface |
 | `mainframe chat` | Start an interactive chat session |
 | `mainframe chat --resume` | Resume the most recent session |
 | `mainframe chat --session-id <id>` | Resume a specific session |

@@ -10,6 +10,7 @@ from mainframe.cli.commands.mcp import mcp
 from mainframe.cli.commands.memory import memory
 from mainframe.cli.commands.run import run
 from mainframe.cli.commands.skills import skills
+from mainframe.cli.commands.telegram_bot import telegram
 
 
 @click.group()
@@ -24,6 +25,7 @@ cli.add_command(mcp)
 cli.add_command(memory)
 cli.add_command(run)
 cli.add_command(skills)
+cli.add_command(telegram)
 
 
 def quick_chat() -> None:
