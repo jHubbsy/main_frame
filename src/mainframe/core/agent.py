@@ -23,6 +23,7 @@ from mainframe.providers.base import (
     StopReason,
     StreamEvent,
 )
+from mainframe.security.sanitize import sanitize_mcp_result, sanitize_tool_result
 from mainframe.tools.base import ToolContext
 from mainframe.tools.policy import ToolPolicy
 from mainframe.tools.registry import ToolRegistry
@@ -150,8 +151,17 @@ class AgentLoop:
                     tool_result = await self._tool_registry.execute(
                         call.name, call.input, ctx
                     )
-                    content = tool_result.content
                     is_error = tool_result.is_error
+                    if not is_error:
+                        # MCP tools are namespaced with double-underscore (e.g. server__tool)
+                        # and use a stricter trust level than builtins.
+                        if "__" in call.name:
+                            server_name = call.name.split("__")[0]
+                            content = sanitize_mcp_result(tool_result.content, server_name).content
+                        else:
+                            content = sanitize_tool_result(tool_result.content, call.name).content
+                    else:
+                        content = tool_result.content
 
                 tool_result_blocks.append(ContentBlock(
                     type="tool_result",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from mainframe.security.sanitize import sanitize_memory_result
 from mainframe.tools.base import ToolContext, ToolResult
 
 name = "memory_search"
@@ -53,7 +54,7 @@ async def execute(params: dict[str, Any], ctx: ToolContext) -> ToolResult:
         if r.metadata.get("role"):
             source = f"{r.source}/{r.metadata['role']}"
         lines.append(f"[{i}] ({source}, score={r.score:.3f})")
-        lines.append(r.content)
+        lines.append(sanitize_memory_result(r.content).content)
         lines.append("")
 
     return ToolResult.success("\n".join(lines))

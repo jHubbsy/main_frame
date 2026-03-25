@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from mainframe.security.sanitize import sanitize_skill_body
 from mainframe.skills.actions import SkillAction, discover_actions
 from mainframe.skills.loader import discover_skills
 from mainframe.skills.manifest import SkillManifest
@@ -74,7 +75,9 @@ class SkillRegistry:
             if skill.description:
                 lines.append(skill.description)
             if skill.body:
-                lines.append(skill.body)
+                result = sanitize_skill_body(skill.body, skill.name)
+                if not result.flagged:
+                    lines.append(skill.body)
             lines.append("")
 
         return "\n".join(lines)
