@@ -32,6 +32,12 @@ telegram = [
     "python-telegram-bot[job-queue]>=21.0",
 ]
 
+# Metadata for each non-dev extra. Used by install.sh (prompts) and `mainframe extras` (drift detection).
+# Contributors: add a matching [tool.mainframe.extras.<name>] section for every new optional-dependency group.
+[tool.mainframe.extras.telegram]
+description = "Telegram bot interface (requires TELEGRAM_BOT_TOKEN)"
+check_package = "python-telegram-bot"
+
 [project.scripts]
 mainframe = "mainframe.cli.app:cli"
 computer = "mainframe.cli.app:quick_chat"

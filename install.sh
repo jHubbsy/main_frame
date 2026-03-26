@@ -42,6 +42,61 @@ fi
 pipx ensurepath
 success "'mainframe' and 'computer' are now available"
 
+# Optional extras — parse from pyproject.toml and prompt for each
+echo
+info "Optional integrations:"
+extras_json=$(python3 - <<'PYEOF'
+import sys
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib  # fallback for older Python
+    except ImportError:
+        print("[]")
+        sys.exit(0)
+import json
+
+with open("pyproject.toml", "rb") as f:
+    data = tomllib.load(f)
+
+opt_deps = data.get("project", {}).get("optional-dependencies", {})
+extras_meta = data.get("tool", {}).get("mainframe", {}).get("extras", {})
+
+result = []
+for name, pkgs in opt_deps.items():
+    if name == "dev":
+        continue
+    meta = extras_meta.get(name, {})
+    result.append({
+        "name": name,
+        "description": meta.get("description", name),
+        "packages": pkgs,
+    })
+print(json.dumps(result))
+PYEOF
+)
+
+extras_count=$(python3 -c "import json,sys; print(len(json.loads(sys.argv[1])))" "$extras_json")
+
+if [[ "$extras_count" -eq 0 ]]; then
+    info "No optional integrations declared."
+else
+    while IFS=$'\t' read -r name description; do
+        read -rp "  Install '$name' — $description? [y/N] " choice
+        if [[ "${choice:-N}" =~ ^[Yy]$ ]]; then
+            pipx inject mainframe ".[${name}]"
+            success "Installed '$name' extra"
+        fi
+    done < <(python3 - <<PYEOF
+import json, sys
+extras = json.loads("""$extras_json""")
+for e in extras:
+    print(e["name"] + "\t" + e["description"])
+PYEOF
+)
+fi
+
 # Auth setup
 echo
 read -rp "Set up your provider API key now? [Y/n] " setup_auth
@@ -51,4 +106,5 @@ fi
 
 echo
 success "Done. Run 'mainframe chat' or 'computer' to start."
+success "Run 'mainframe extras' to check integration status at any time."
 warn "If commands are not found, restart your shell or run: source ~/.zshrc"
