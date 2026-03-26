@@ -33,7 +33,7 @@ def yourfeature() -> None:
         import some_package
     except ImportError:
         print_error("yourfeature integration is not installed.")
-        print_info("Install it with: pipx inject mainframe '.[yourfeature]'")
+        print_info("Install it with: pipx runpip mainframe install -e '.[yourfeature]'")
         sys.exit(1)
     # ... rest of command
 ```

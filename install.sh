@@ -85,7 +85,7 @@ else
     while IFS=$'\t' read -r name description; do
         read -rp "  Install '$name' — $description? [y/N] " choice
         if [[ "${choice:-N}" =~ ^[Yy]$ ]]; then
-            pipx inject mainframe ".[${name}]"
+            pipx runpip mainframe install -e ".[${name}]"
             success "Installed '$name' extra"
         fi
     done < <(python3 - <<PYEOF

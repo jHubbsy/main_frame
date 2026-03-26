@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import sys
 from pathlib import Path
 
 import click
@@ -101,8 +102,13 @@ def extras() -> None:
     if missing:
         console.print()
         console.print("[bold]To install missing extras:[/bold]")
+        in_pipx = ".local/pipx/venvs" in sys.prefix
         for name in missing:
-            console.print(f"  pipx inject mainframe '.\\[{name}]'")
+            if in_pipx:
+                cmd = f"pipx runpip mainframe install -e '.\\[{name}]'"
+            else:
+                cmd = f"pip install -e '.\\[{name}]'"
+            console.print(f"  {cmd}")
 
     if no_meta:
         console.print()
