@@ -40,9 +40,14 @@ def thinking_status() -> Status:
     return Status("[dim]thinking…[/dim]", console=console, spinner="dots")
 
 
+def print_response_header() -> None:
+    """Print the agent response label before streamed output."""
+    console.print("[cyan]╭─ Mainframe[/cyan]")
+
+
 def print_input_separator() -> None:
     """Print the top border of the user input box."""
-    console.print("\n[dim]╭─ You[/dim]")
+    console.print("\n[green]╭─ You[/green]")
 
 
 def print_assistant_text(text: str, *, streaming: bool = False) -> None:

@@ -13,6 +13,7 @@ from mainframe.cli.display import (
     print_error,
     print_info,
     print_input_separator,
+    print_response_header,
     print_session_info,
     print_tool_call,
     print_tool_result,
@@ -360,7 +361,8 @@ async def _chat_loop(
                 console.print()  # blank line before response
 
                 status = thinking_status()
-                first_output = True
+                spinner_stopped = False
+                response_header_printed = False
 
                 async def _on_before_tool(event: Event) -> None:
                     assert isinstance(event, BeforeToolCall)
@@ -372,14 +374,17 @@ async def _chat_loop(
                 try:
                     async for event in agent.run():
                         if event.type == "text_delta" and event.text:
-                            if first_output:
+                            if not spinner_stopped:
                                 status.stop()
-                                first_output = False
+                                spinner_stopped = True
+                            if not response_header_printed:
+                                print_response_header()
+                                response_header_printed = True
                             print_assistant_text(event.text, streaming=True)
                         elif event.type == "tool_result" and event.tool_call:
-                            if first_output:
+                            if not spinner_stopped:
                                 status.stop()
-                                first_output = False
+                                spinner_stopped = True
                             print_tool_call(event.tool_call.name, event.tool_call.input)
                             is_error = event.text.startswith(
                                 f"[{event.tool_call.name}] ERROR:"
