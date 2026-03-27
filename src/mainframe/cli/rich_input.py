@@ -135,11 +135,6 @@ class RichInputHandler:
             except Exception as e:
                 print_error(f"Paste error: {e}")
 
-        @kb.add('c-i')  # Ctrl+I to add image
-        async def add_image_handler(event) -> None:
-            """Manually add an image file."""
-            await self._prompt_for_image()
-
         @kb.add('c-l')  # Ctrl+L to list attached content
         def list_attachments(event) -> None:
             """List current attachments."""
@@ -263,17 +258,6 @@ class RichInputHandler:
         # This is a placeholder for clipboard handling
         # Real implementation would need platform-specific clipboard libraries
         print_info("Paste handling not yet implemented")
-
-    async def _prompt_for_image(self) -> None:
-        """Prompt user to select an image file."""
-        try:
-            file_path = await asyncio.to_thread(
-                input, "Enter image path: "
-            )
-            if file_path.strip():
-                await self._handle_file_input(file_path.strip())
-        except (EOFError, KeyboardInterrupt):
-            pass
 
     def _show_attachments(self) -> None:
         """Show current attachments."""
