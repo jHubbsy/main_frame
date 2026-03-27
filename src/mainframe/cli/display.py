@@ -95,10 +95,18 @@ def print_info(message: str) -> None:
     console.print(f"[dim]{message}[/dim]")
 
 
-def print_usage(input_tokens: int, output_tokens: int) -> None:
-    console.print(
-        f"\n[dim]tokens: {input_tokens} in / {output_tokens} out[/dim]"
-    )
+def print_usage(
+    input_tokens: int,
+    output_tokens: int,
+    cache_creation_tokens: int = 0,
+    cache_read_tokens: int = 0,
+) -> None:
+    parts = [f"tokens: {input_tokens} in / {output_tokens} out"]
+    if cache_read_tokens:
+        parts.append(f"{cache_read_tokens} cache hit")
+    if cache_creation_tokens:
+        parts.append(f"{cache_creation_tokens} cache write")
+    console.print(f"\n[dim]{' · '.join(parts)}[/dim]")
 
 
 def print_session_info(session_id: str, turn_count: int) -> None:

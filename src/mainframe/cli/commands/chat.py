@@ -485,7 +485,12 @@ async def _chat_loop(
                             if streamed_parts:
                                 console.print()  # end the raw stream line
                                 rerender_as_markdown("".join(streamed_parts))
-                            print_usage(event.usage.input_tokens, event.usage.output_tokens)
+                            print_usage(
+                                event.usage.input_tokens,
+                                event.usage.output_tokens,
+                                event.usage.cache_creation_tokens,
+                                event.usage.cache_read_tokens,
+                            )
                             last_input_tokens = event.usage.input_tokens
                 finally:
                     status.stop()

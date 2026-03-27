@@ -65,15 +65,23 @@ def _to_anthropic_messages(messages: list[Message]) -> list[dict[str, Any]]:
 
 
 def _to_anthropic_tools(tools: list[ToolDefinition]) -> list[dict[str, Any]]:
-    """Convert tool definitions to Anthropic format."""
-    return [
-        {
+    """Convert tool definitions to Anthropic format.
+
+    The last tool gets a cache_control breakpoint so system prompt + all
+    tool schemas are cached together after the first call.
+    """
+    result = []
+    last = len(tools) - 1
+    for i, t in enumerate(tools):
+        tool_dict: dict[str, Any] = {
             "name": t.name,
             "description": t.description,
             "input_schema": t.input_schema,
         }
-        for t in tools
-    ]
+        if i == last:
+            tool_dict["cache_control"] = {"type": "ephemeral"}
+        result.append(tool_dict)
+    return result
 
 
 def _parse_stop_reason(reason: str) -> StopReason:
@@ -108,7 +116,9 @@ class AnthropicProvider:
             "max_tokens": max_tokens,
         }
         if system:
-            kwargs["system"] = system
+            kwargs["system"] = [
+                {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
+            ]
         if tools:
             kwargs["tools"] = _to_anthropic_tools(tools)
 
@@ -146,6 +156,12 @@ class AnthropicProvider:
             usage=Usage(
                 input_tokens=response.usage.input_tokens,
                 output_tokens=response.usage.output_tokens,
+                cache_creation_tokens=getattr(
+                    response.usage, "cache_creation_input_tokens", 0
+                ) or 0,
+                cache_read_tokens=getattr(
+                    response.usage, "cache_read_input_tokens", 0
+                ) or 0,
             ),
             stop_reason=_parse_stop_reason(response.stop_reason),
             tool_calls=tool_calls,
