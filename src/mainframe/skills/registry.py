@@ -65,20 +65,25 @@ class SkillRegistry:
             tool_registry.register_skill_action(action)
 
     def build_system_prompt_section(self) -> str:
-        """Generate a system prompt section describing available skills."""
+        """Generate a compact system prompt section listing active skills and their actions.
+
+        Only includes name, description, and action names — full SKILL.md bodies are
+        omitted to minimise token overhead. Tool definitions carry the parameter details.
+        """
         if not self._skills:
             return ""
 
-        lines = ["\n## Available Skills\n"]
+        lines = ["\n## Active Skills\n"]
         for skill in self._skills.values():
-            lines.append(f"### {skill.name} (v{skill.version})")
-            if skill.description:
-                lines.append(skill.description)
-            if skill.body:
-                result = sanitize_skill_body(skill.body, skill.name)
-                if not result.flagged:
-                    lines.append(skill.body)
-            lines.append("")
+            skill_actions = [
+                a for a in self._actions.values()
+                if a.name.startswith(f"{skill.name}__")
+            ]
+            desc = f" — {skill.description}" if skill.description else ""
+            action_str = ""
+            if skill_actions:
+                action_str = " Actions: " + ", ".join(a.name for a in skill_actions)
+            lines.append(f"- {skill.name} (v{skill.version}){desc}{action_str}")
 
         return "\n".join(lines)
 
