@@ -17,30 +17,30 @@ parameters: dict[str, Any] = {
     "properties": {
         "server_name": {
             "type": "string",
-            "description": "A short identifier for the server (e.g. 'github', 'postgres').",
+            "description": "Short server identifier (e.g. 'github').",
         },
         "command": {
             "type": "string",
-            "description": "The executable command to launch a stdio MCP server.",
+            "description": "Command to launch a stdio server.",
         },
         "args": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Command-line arguments for a stdio server process.",
+            "description": "Arguments for the server command.",
         },
         "env": {
             "type": "object",
             "additionalProperties": {"type": "string"},
-            "description": "Environment variables to set for a stdio server process.",
+            "description": "Environment variables for the server process.",
         },
         "url": {
             "type": "string",
-            "description": "URL for an HTTP-based MCP server. Only use if explicitly provided by the user.",
+            "description": "HTTP server URL (user-provided only).",
         },
         "required_env": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Env var names the server needs for auth. User will be prompted for missing values.",
+            "description": "Auth env var names; user prompted if missing.",
         },
     },
     "required": ["server_name"],

@@ -216,6 +216,8 @@ async def _chat_loop(
     tool_policy = None
     if not no_tools:
         tool_registry, tool_policy = _setup_tools(config.security.allowed_tool_groups)
+        if tool_policy and not config.mcp.enabled:
+            tool_policy.deny("connect_mcp")
 
     # MCP setup
     mcp_manager: MCPClientManager | None = None

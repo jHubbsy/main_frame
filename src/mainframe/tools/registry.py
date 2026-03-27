@@ -10,6 +10,7 @@ from mainframe.tools.base import Tool, ToolContext, ToolResult, validate_params
 
 if TYPE_CHECKING:
     from mainframe.skills.actions import SkillAction
+    from mainframe.tools.policy import ToolPolicy
 
 
 class ToolRegistry:
@@ -37,8 +38,12 @@ class ToolRegistry:
     def names(self) -> list[str]:
         return list(self._tools.keys())
 
-    def to_definitions(self) -> list[ToolDefinition]:
-        """Convert all tools to provider-compatible definitions."""
+    def to_definitions(self, policy: ToolPolicy | None = None) -> list[ToolDefinition]:
+        """Convert tools to provider-compatible definitions.
+
+        When a policy is provided only tools allowed by that policy are included,
+        reducing token overhead for infrequently-used tools.
+        """
         return [
             ToolDefinition(
                 name=t.name,
@@ -46,6 +51,7 @@ class ToolRegistry:
                 input_schema=t.parameters,
             )
             for t in self._tools.values()
+            if policy is None or policy.is_allowed(t.name)
         ]
 
     async def execute(

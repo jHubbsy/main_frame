@@ -6,10 +6,20 @@ from dataclasses import dataclass, field
 
 # Predefined permission groups
 GROUPS: dict[str, list[str]] = {
+    # Default group — everyday tools, excludes rarely-used heavy schemas
+    "core": [
+        "bash", "read_file", "write_file", "edit_file",
+        "glob_search", "grep_search", "memory_search",
+        "web_fetch", "web_search", "analyze_image", "connect_mcp",
+    ],
+    # Opt-in group for skill authoring
+    "skills": ["create_skill"],
+    "mcp": ["connect_mcp"],
+    # Legacy group — all builtins (kept for backward compatibility)
     "builtin": [
         "bash", "read_file", "write_file", "edit_file",
         "glob_search", "grep_search", "memory_search", "create_skill",
-        "web_fetch", "web_search", "connect_mcp",
+        "web_fetch", "web_search", "connect_mcp", "analyze_image",
     ],
     "filesystem": ["read_file", "write_file", "edit_file", "glob_search", "grep_search"],
     "shell": ["bash"],

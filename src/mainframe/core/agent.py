@@ -88,7 +88,7 @@ class AgentLoop:
         falls back to non-streaming complete() for reliable tool call parsing,
         then switches back to streaming for the next text response.
         """
-        tool_defs = self._tool_registry.to_definitions() if self._tool_registry else None
+        tool_defs = self._tool_registry.to_definitions(policy=self._tool_policy) if self._tool_registry else None
 
         for _iteration in range(self._max_iterations):
             await self._event_bus.emit(AgentThinking())

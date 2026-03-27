@@ -18,7 +18,7 @@ class ProviderConfig(BaseModel):
 class SecurityConfig(BaseModel):
     max_sandbox_tier: int = Field(default=1, ge=0, le=2)
     require_skill_signatures: bool = False
-    allowed_tool_groups: list[str] = Field(default_factory=lambda: ["builtin"])
+    allowed_tool_groups: list[str] = Field(default_factory=lambda: ["core"])
     sanitize_level: Literal["off", "warn", "isolate"] = "isolate"
 
 
