@@ -31,7 +31,6 @@ def print_welcome() -> None:
             "Press [bold]Enter[/bold] to send  •  "
             "[bold]Option+Enter[/bold] or [bold]Ctrl+J[/bold] for newline  •  "
             "[bold]Ctrl+D[/bold] to exit  •  "
-            "[bold]Ctrl+I[/bold] add image  •  "
             "[bold]/help[/bold] for commands",
             border_style="bright_cyan",
             padding=(1, 2),
