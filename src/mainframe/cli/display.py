@@ -25,7 +25,8 @@ def print_welcome() -> None:
     console.print(
         Panel(
             logo + "\n\n"
-            "Type your message and press [bold]Enter[/bold] to send  •  "
+            "Press [bold]Enter[/bold] to send  •  "
+            "[bold]Option+Enter[/bold] or [bold]Ctrl+J[/bold] for newline  •  "
             "[bold]Ctrl+D[/bold] to exit  •  "
             "[bold]Ctrl+I[/bold] add image  •  "
             "[bold]/help[/bold] for commands",

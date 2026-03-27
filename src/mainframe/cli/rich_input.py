@@ -111,9 +111,7 @@ class RichInputHandler:
         @kb.add('c-v')  # Ctrl+V for paste
         async def paste_handler(event) -> None:
             """Handle paste events - check for images."""
-            # Try to get clipboard content
             try:
-                # This is a placeholder - actual clipboard handling is platform-specific
                 await self._handle_paste()
             except Exception as e:
                 print_error(f"Paste error: {e}")
@@ -128,12 +126,22 @@ class RichInputHandler:
             """List current attachments."""
             self._show_attachments()
 
+        @kb.add('enter')  # Enter submits
+        def handle_enter(event) -> None:
+            event.current_buffer.validate_and_handle()
+
+        def _insert_newline(event) -> None:
+            event.current_buffer.insert_text('\n')
+
+        kb.add('escape', 'enter')(_insert_newline)  # Option+Enter (macOS) / Alt+Enter
+        kb.add('c-j')(_insert_newline)              # Ctrl+J fallback (works in all terminals)
+
         # Setup prompt session
         history = FileHistory(self.history_file) if self.history_file else None
         self.prompt_session: PromptSession[str] = PromptSession(
             history=history,
             key_bindings=kb,
-            multiline=False,
+            multiline=True,
         )
 
     async def get_input(self, prompt: str = "") -> RichMessage:
