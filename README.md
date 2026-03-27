@@ -106,7 +106,9 @@ mainframe auth status
 | `mainframe auth login` | Set or update an API key (default: anthropic) |
 | `mainframe auth login --provider <name>` | Set key for a specific provider (e.g. `brave`) |
 | `mainframe auth logout` | Remove a stored API key |
-| `mainframe auth logout-mcp <server>` | Remove stored OAuth/PAT tokens for an MCP server |
+| `mainframe auth logout-mcp <server>` | Remove stored OAuth tokens for an MCP server |
+| `mainframe auth mcp-set <server> <VAR>` | Store a credential env var for an MCP server |
+| `mainframe auth mcp-delete <server> <VAR>` | Remove a stored credential env var for an MCP server |
 | `mainframe auth status` | Show stored API keys and MCP credentials |
 | `mainframe memory search <query>` | Search conversation history and facts |
 | `mainframe memory search <query> --limit <n>` | Limit search results (default: 5) |
@@ -122,7 +124,7 @@ mainframe auth status
 | `mainframe --version` | Show version |
 | `computer` | Shortcut for `mainframe chat` |
 
-**In-session commands:** `/tools`, `/session`, `/quit`
+**In-session commands:** `/help`, `/tools`, `/session`, `/compact`, `/clear`, `/quit`
 
 ## MCP Integration
 
@@ -143,16 +145,20 @@ required_env = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
 
 At startup, Mainframe checks the credential store for each `required_env` entry. Any that are missing trigger a masked prompt. You'll be asked once whether to save each credential for future connections.
 
-To clear stored MCP credentials:
+To manage stored MCP credentials:
 
 ```bash
-mainframe auth logout-mcp github
-```
-
-To see what's stored:
-
-```bash
+# View all stored MCP credentials
 mainframe auth status
+
+# Add or update a credential
+mainframe auth mcp-set github GITHUB_PERSONAL_ACCESS_TOKEN
+
+# Remove a specific credential
+mainframe auth mcp-delete github GITHUB_PERSONAL_ACCESS_TOKEN
+
+# Remove OAuth tokens (for HTTP/OAuth servers)
+mainframe auth logout-mcp github
 ```
 
 ### Static Configuration

@@ -9,10 +9,13 @@ import click
 from mainframe.cli.display import print_error, print_info
 from mainframe.security.credentials import (
     delete_api_key,
+    delete_mcp_env_var,
     delete_mcp_oauth_tokens,
     get_api_key,
+    list_mcp_env_vars,
     list_mcp_oauth_servers,
     list_stored_providers,
+    store_mcp_env_var,
     update_api_key,
 )
 
@@ -60,7 +63,7 @@ def logout(provider: str) -> None:
 
 @auth.command(name="status")
 def auth_status() -> None:
-    """Show stored API keys and MCP OAuth tokens."""
+    """Show stored API keys and MCP credentials."""
     providers = list_stored_providers()
     if providers:
         print_info("API keys:")
@@ -68,6 +71,12 @@ def auth_status() -> None:
             print_info(f"  {p}: configured")
     else:
         print_info("No API keys stored. Run: mainframe auth login")
+
+    mcp_env_vars = list_mcp_env_vars()
+    if mcp_env_vars:
+        print_info("MCP credentials:")
+        for server, var in mcp_env_vars:
+            print_info(f"  {server}: {var}")
 
     mcp_servers = list_mcp_oauth_servers()
     if mcp_servers:
@@ -84,3 +93,40 @@ def logout_mcp(server: str) -> None:
         print_info(f"OAuth tokens for MCP server '{server}' removed.")
     else:
         print_info(f"No stored OAuth tokens for '{server}'.")
+
+
+@auth.command(name="mcp-set")
+@click.argument("server")
+@click.argument("var")
+def mcp_set(server: str, var: str) -> None:
+    """Store a credential env var for an MCP server.
+
+    Example: mainframe auth mcp-set github GITHUB_PERSONAL_ACCESS_TOKEN
+    """
+    try:
+        value = getpass.getpass(f"{var}: ")
+    except (EOFError, KeyboardInterrupt):
+        print_info("\nCancelled.")
+        return
+
+    value = value.strip()
+    if not value:
+        print_error("No value entered.")
+        return
+
+    store_mcp_env_var(server, var, value)
+    print_info(f"Saved {var} for MCP server '{server}'.")
+
+
+@auth.command(name="mcp-delete")
+@click.argument("server")
+@click.argument("var")
+def mcp_delete(server: str, var: str) -> None:
+    """Remove a stored credential env var for an MCP server.
+
+    Example: mainframe auth mcp-delete github GITHUB_PERSONAL_ACCESS_TOKEN
+    """
+    if delete_mcp_env_var(server, var):
+        print_info(f"Removed {var} for MCP server '{server}'.")
+    else:
+        print_info(f"No stored {var} for '{server}'.")

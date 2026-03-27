@@ -223,6 +223,37 @@ def store_mcp_env_var(server_name: str, var_name: str, value: str) -> None:
     store.set(f"mcp_{server_name}_{var_name}", value)
 
 
+def delete_mcp_env_var(server_name: str, var_name: str) -> bool:
+    """Remove a stored env var for an MCP server. Returns True if it existed."""
+    store = _get_credential_store()
+    return store.delete(f"mcp_{server_name}_{var_name}")
+
+
+def list_mcp_env_vars() -> list[tuple[str, str]]:
+    """List all stored MCP env vars as (server_name, var_name) tuples.
+
+    Key format in the store is: mcp_{server_name}_{VAR_NAME}
+    VAR_NAME is always uppercase; server_name may contain underscores.
+    We split at the first all-uppercase token.
+    """
+    store = _get_credential_store()
+    results = []
+    for key in store.list_keys():
+        if not key.startswith("mcp_"):
+            continue
+        if key.endswith("_oauth_token") or key.endswith("_oauth_client"):
+            continue
+        remainder = key[4:]  # strip leading "mcp_"
+        parts = remainder.split("_")
+        for i, part in enumerate(parts):
+            if i > 0 and part.isupper():
+                server = "_".join(parts[:i])
+                var = "_".join(parts[i:])
+                results.append((server, var))
+                break
+    return results
+
+
 def list_mcp_oauth_servers() -> list[str]:
     """List MCP servers that have stored OAuth tokens."""
     store = _get_credential_store()
