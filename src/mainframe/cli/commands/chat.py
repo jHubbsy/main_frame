@@ -11,6 +11,7 @@ from mainframe.cli.display import (
     console,
     print_assistant_text,
     print_error,
+    print_help,
     print_info,
     print_input_separator,
     print_response_header,
@@ -324,15 +325,27 @@ async def _chat_loop(
                 if scan.flagged:
                     print_info(f"[security] Suspicious input patterns: {scan.patterns_found}")
 
-            if user_input.lower() in ("/quit", "/exit", "/q"):
+            cmd = user_input.lower().strip()
+
+            if cmd in ("/quit", "/exit", "/q"):
                 print_info("Goodbye.")
                 break
 
-            if user_input.lower() == "/session":
+            if cmd == "/help":
+                print_help()
+                continue
+
+            if cmd == "/clear":
+                console.clear()
+                print_welcome()
                 print_session_info(session.session_id, session.meta.turn_count)
                 continue
 
-            if user_input.lower() == "/tools":
+            if cmd == "/session":
+                print_session_info(session.session_id, session.meta.turn_count)
+                continue
+
+            if cmd == "/tools":
                 if tool_registry:
                     print_info(f"Tools: {', '.join(tool_registry.names)}")
                 else:

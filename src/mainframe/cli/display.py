@@ -6,6 +6,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.status import Status
+from rich.table import Table
 
 console = Console()
 err_console = Console(stderr=True)
@@ -89,6 +90,27 @@ def print_tool_result(tool_name: str, content: str, is_error: bool = False) -> N
     style = "red" if is_error else "dim"
     truncated = _truncate(content, 500)
     console.print(f"[{style}]{truncated}[/{style}]")
+
+
+SLASH_COMMANDS: list[tuple[str, str]] = [
+    ("/help", "Show available commands"),
+    ("/clear", "Clear the screen"),
+    ("/session", "Show session ID and turn count"),
+    ("/tools", "List available tools"),
+    ("/quit", "Exit (also /exit or /q)"),
+]
+
+
+def print_help() -> None:
+    """Print available slash commands."""
+    table = Table(show_header=False, box=None, pad_edge=False, padding=(0, 2, 0, 0))
+    table.add_column(style="bold cyan", min_width=12)
+    table.add_column(style="dim")
+
+    for cmd, desc in SLASH_COMMANDS:
+        table.add_row(cmd, desc)
+
+    console.print(table)
 
 
 def _truncate(text: str, max_len: int) -> str:

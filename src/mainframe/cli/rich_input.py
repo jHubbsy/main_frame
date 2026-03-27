@@ -9,10 +9,29 @@ from pathlib import Path
 from typing import Any
 
 from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.formatted_text import HTML, AnyFormattedText
 from prompt_toolkit.key_binding import KeyBindings
 
-from mainframe.cli.display import print_error, print_info
+from mainframe.cli.display import SLASH_COMMANDS, print_error, print_info
+
+
+class SlashCommandCompleter(Completer):
+    """Show slash command completions when input starts with /."""
+
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor
+        if not text.startswith("/"):
+            return
+        typed = text[1:]
+        for cmd, desc in SLASH_COMMANDS:
+            if cmd[1:].startswith(typed):
+                yield Completion(
+                    cmd,
+                    start_position=-len(text),
+                    display=cmd,
+                    display_meta=desc,
+                )
 
 # Image formats we can handle
 SUPPORTED_IMAGE_TYPES = {
@@ -142,6 +161,8 @@ class RichInputHandler:
             history=history,
             key_bindings=kb,
             multiline=True,
+            completer=SlashCommandCompleter(),
+            complete_while_typing=True,
         )
 
     async def get_input(self, prompt: str = "") -> RichMessage:
