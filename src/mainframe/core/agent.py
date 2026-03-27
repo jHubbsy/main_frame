@@ -47,6 +47,7 @@ class AgentLoop:
         max_iterations: int = 20,
         workspace_dir: Path | None = None,
         event_bus: EventBus | None = None,
+        max_tool_result_chars: int = 8_000,
     ):
         self._provider = provider
         self._session = session
@@ -57,6 +58,7 @@ class AgentLoop:
         self._max_iterations = max_iterations
         self._workspace_dir = workspace_dir or Path.cwd()
         self._event_bus = event_bus or EventBus()
+        self._max_tool_result_chars = max_tool_result_chars
 
     @property
     def event_bus(self) -> EventBus:
@@ -162,6 +164,12 @@ class AgentLoop:
                             content = sanitize_tool_result(tool_result.content, call.name).content
                     else:
                         content = tool_result.content
+
+                if not is_error and len(content) > self._max_tool_result_chars:
+                    content = (
+                        content[: self._max_tool_result_chars]
+                        + f"\n[truncated: result exceeded {self._max_tool_result_chars} chars]"
+                    )
 
                 tool_result_blocks.append(ContentBlock(
                     type="tool_result",

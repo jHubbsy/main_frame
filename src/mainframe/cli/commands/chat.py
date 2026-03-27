@@ -338,6 +338,7 @@ async def _chat_loop(
         tool_policy=tool_policy,
         system_prompt=system_prompt,
         max_tokens=config.provider.max_tokens,
+        max_tool_result_chars=config.session.max_tool_result_chars,
     )
 
     # Index messages to memory as they flow through

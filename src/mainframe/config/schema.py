@@ -26,6 +26,7 @@ class SessionConfig(BaseModel):
     max_turns: int = 100
     auto_compact: bool = True
     compact_token_threshold: int = 50_000  # auto-compact when input tokens exceed this
+    max_tool_result_chars: int = 8_000  # truncate tool results stored in history
 
 
 class MCPOAuthConfig(BaseModel):
