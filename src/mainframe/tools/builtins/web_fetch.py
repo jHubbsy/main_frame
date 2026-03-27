@@ -11,8 +11,7 @@ from mainframe.tools.base import ToolContext, ToolResult
 
 name = "web_fetch"
 description = (
-    "Fetch a URL via HTTP GET and return the page content converted to markdown. "
-    "Useful for reading documentation, articles, and web pages."
+    "Fetch a URL and return the page content as markdown."
 )
 parameters: dict[str, Any] = {
     "type": "object",

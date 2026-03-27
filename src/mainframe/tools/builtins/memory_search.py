@@ -8,10 +8,7 @@ from mainframe.security.sanitize import sanitize_memory_result
 from mainframe.tools.base import ToolContext, ToolResult
 
 name = "memory_search"
-description = (
-    "Search conversation history and stored facts. "
-    "Use this to recall previous discussions or find relevant context."
-)
+description = "Search conversation memory and stored facts."
 parameters: dict[str, Any] = {
     "type": "object",
     "properties": {

@@ -12,7 +12,7 @@ from mainframe.tools.base import ToolContext, ToolResult
 
 # Tool metadata
 name = "analyze_image"
-description = "Analyze an image file and describe its contents, text, or answer questions about it"
+description = "Analyze an image file and describe its contents or answer questions about it."
 
 parameters = {
     "type": "object",

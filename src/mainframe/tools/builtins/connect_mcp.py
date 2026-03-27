@@ -9,12 +9,8 @@ from mainframe.tools.base import ToolContext, ToolResult
 
 name = "connect_mcp"
 description = (
-    "Propose connecting to an MCP (Model Context Protocol) server. "
-    "The connection requires user approval before it is established. "
-    "Use 'command' (and optional 'args'/'env') for stdio servers launched via a local process "
-    "(e.g. npx, uvx, or a local binary). "
-    "Only use 'url' if the user has explicitly provided an HTTP endpoint for the server — "
-    "never guess or infer a URL."
+    "Propose connecting to an MCP server (requires user approval). "
+    "Use 'command' for stdio servers (npx, uvx, local binary) or 'url' for HTTP endpoints."
 )
 parameters: dict[str, Any] = {
     "type": "object",
@@ -39,20 +35,12 @@ parameters: dict[str, Any] = {
         },
         "url": {
             "type": "string",
-            "description": (
-                "URL for an HTTP-based MCP server. "
-                "Only use this if the user has explicitly provided the URL — do not guess."
-            ),
+            "description": "URL for an HTTP-based MCP server. Only use if explicitly provided by the user.",
         },
         "required_env": {
             "type": "array",
             "items": {"type": "string"},
-            "description": (
-                "Environment variable names the server requires for authentication. "
-                "The user will be prompted for any that are not already stored. "
-                "Use the exact variable name the server reads from its environment. "
-                "Known values: GitHub MCP server uses 'GITHUB_PERSONAL_ACCESS_TOKEN'."
-            ),
+            "description": "Env var names the server needs for auth. User will be prompted for missing values.",
         },
     },
     "required": ["server_name"],
