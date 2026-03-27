@@ -136,17 +136,10 @@ class RichInputHandler:
             multiline=False,
         )
 
-    async def get_input(self, prompt: str = "> ") -> RichMessage:
+    async def get_input(self, prompt: str = "") -> RichMessage:
         """Get rich input from user."""
         # Reset current message
         self.current_message = RichMessage()
-
-        # Show help if there are shortcuts
-        if not hasattr(self, '_shown_help'):
-            print_info(
-                "Rich input enabled. Ctrl+I: add image, Ctrl+L: list attachments, Ctrl+V: paste"
-            )
-            self._shown_help = True
 
         try:
             # Get text input
@@ -178,15 +171,16 @@ class RichInputHandler:
             print_error(f"Input error: {e}")
             return RichMessage()
 
-    def _build_prompt(self, base_prompt: str) -> AnyFormattedText:
-        """Build the prompt with attachment indicators."""
-        if not self.current_message.has_images:
-            return base_prompt
-
-        # Show attachment count
-        img_count = len(self.current_message.images)
-        suffix = "s" if img_count != 1 else ""
-        return HTML(f'<ansigreen>[{img_count} image{suffix}]</ansigreen> {base_prompt}')
+    def _build_prompt(self, base_prompt: str = "") -> AnyFormattedText:
+        """Build the styled box-left-border prompt, with optional attachment indicator."""
+        if self.current_message.has_images:
+            img_count = len(self.current_message.images)
+            suffix = "s" if img_count != 1 else ""
+            return HTML(
+                f'<style fg="ansidarkgray">│ </style>'
+                f'<ansigreen>[{img_count} image{suffix}] </ansigreen>'
+            )
+        return HTML('<style fg="ansidarkgray">│ </style>')
 
     def _looks_like_file_path(self, text: str) -> bool:
         """Check if text looks like a file path."""

@@ -5,6 +5,7 @@ from __future__ import annotations
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.status import Status
 
 console = Console()
 err_console = Console(stderr=True)
@@ -24,11 +25,24 @@ def print_welcome() -> None:
     console.print(
         Panel(
             logo + "\n\n"
-            "Type your message. Press [bold]Ctrl+D[/bold] to exit.",
+            "Type your message and press [bold]Enter[/bold] to send  •  "
+            "[bold]Ctrl+D[/bold] to exit  •  "
+            "[bold]Ctrl+I[/bold] add image  •  "
+            "[bold]/help[/bold] for commands",
             border_style="bright_cyan",
             padding=(1, 2),
         )
     )
+
+
+def thinking_status() -> Status:
+    """Return a pre-configured thinking spinner. Caller must start/stop it."""
+    return Status("[dim]thinking…[/dim]", console=console, spinner="dots")
+
+
+def print_input_separator() -> None:
+    """Print the top border of the user input box."""
+    console.print("\n[dim]╭─ You[/dim]")
 
 
 def print_assistant_text(text: str, *, streaming: bool = False) -> None:

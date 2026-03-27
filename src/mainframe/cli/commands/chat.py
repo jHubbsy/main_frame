@@ -12,17 +12,19 @@ from mainframe.cli.display import (
     print_assistant_text,
     print_error,
     print_info,
+    print_input_separator,
     print_session_info,
     print_tool_call,
     print_tool_result,
     print_usage,
     print_welcome,
+    thinking_status,
 )
 from mainframe.cli.rich_input import RichInputHandler
 from mainframe.config.loader import load_config
 from mainframe.config.paths import data_dir
 from mainframe.core.agent import AgentLoop
-from mainframe.core.events import Event, TextDelta
+from mainframe.core.events import BeforeToolCall, Event, TextDelta
 from mainframe.core.mcp_client import MCPClientManager
 from mainframe.core.session import Session
 from mainframe.memory.manager import MemoryManager
@@ -306,7 +308,8 @@ async def _chat_loop(
     try:
         while True:
             try:
-                rich_message = await rich_handler.get_input("\n> ")
+                print_input_separator()
+                rich_message = await rich_handler.get_input()
             except (EOFError, KeyboardInterrupt):
                 print_info("\nGoodbye.")
                 break
@@ -356,22 +359,42 @@ async def _chat_loop(
 
                 console.print()  # blank line before response
 
-                async for event in agent.run():
-                    if event.type == "text_delta" and event.text:
-                        print_assistant_text(event.text, streaming=True)
-                    elif event.type == "tool_result" and event.tool_call:
-                        print_tool_call(event.tool_call.name, event.tool_call.input)
-                        is_error = event.text.startswith(
-                            f"[{event.tool_call.name}] ERROR:"
-                        )
-                        content = (
-                            event.text.split("] ", 1)[-1]
-                            if "] " in event.text
-                            else event.text
-                        )
-                        print_tool_result(event.tool_call.name, content, is_error)
-                    elif event.type == "message_stop" and event.usage:
-                        print_usage(event.usage.input_tokens, event.usage.output_tokens)
+                status = thinking_status()
+                first_output = True
+
+                async def _on_before_tool(event: Event) -> None:
+                    assert isinstance(event, BeforeToolCall)
+                    status.update(f"[dim]running [bold]{event.tool_name}[/bold]…[/dim]")
+
+                agent.event_bus.on("before_tool_call", _on_before_tool)
+                status.start()
+
+                try:
+                    async for event in agent.run():
+                        if event.type == "text_delta" and event.text:
+                            if first_output:
+                                status.stop()
+                                first_output = False
+                            print_assistant_text(event.text, streaming=True)
+                        elif event.type == "tool_result" and event.tool_call:
+                            if first_output:
+                                status.stop()
+                                first_output = False
+                            print_tool_call(event.tool_call.name, event.tool_call.input)
+                            is_error = event.text.startswith(
+                                f"[{event.tool_call.name}] ERROR:"
+                            )
+                            content = (
+                                event.text.split("] ", 1)[-1]
+                                if "] " in event.text
+                                else event.text
+                            )
+                            print_tool_result(event.tool_call.name, content, is_error)
+                        elif event.type == "message_stop" and event.usage:
+                            print_usage(event.usage.input_tokens, event.usage.output_tokens)
+                finally:
+                    status.stop()
+                    agent.event_bus.off("before_tool_call", _on_before_tool)
 
                 # Index assistant response
                 if memory_manager:
