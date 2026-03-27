@@ -25,7 +25,7 @@ class SecurityConfig(BaseModel):
 class SessionConfig(BaseModel):
     max_turns: int = 100
     auto_compact: bool = True
-    compact_threshold: int = 50
+    compact_token_threshold: int = 50_000  # auto-compact when input tokens exceed this
 
 
 class MCPOAuthConfig(BaseModel):

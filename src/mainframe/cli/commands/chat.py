@@ -173,6 +173,51 @@ async def _ensure_mcp_credentials(server_name: str, required_env: list[str]) -> 
     return resolved
 
 
+async def _do_compact(
+    session: Session,
+    provider,
+    system_prompt: str,
+) -> bool:
+    """Summarize and compact the session. Returns True on success."""
+    if len(session.messages) < 2:
+        return False
+    compact_status = thinking_status()
+    compact_status.update("[dim]compacting conversation…[/dim]")
+    compact_status.start()
+    try:
+        compact_prompt = (
+            "Summarize this conversation concisely but completely. "
+            "Preserve: key topics, decisions, important technical details, "
+            "and any context needed to continue the conversation coherently. "
+            "This summary will replace the full history to reduce token usage."
+        )
+        summary_result = await provider.complete(
+            messages=list(session.messages) + [
+                Message(role=Role.USER, content=compact_prompt)
+            ],
+            tools=None,
+            system=system_prompt,
+            max_tokens=2048,
+        )
+        summary = (
+            summary_result.message.content
+            if isinstance(summary_result.message.content, str)
+            else ""
+        )
+        if not summary:
+            return False
+        old_count = len(session.messages)
+        session.compact(summary)
+        compact_status.stop()
+        print_info(f"Compacted {old_count} messages → 1 summary. Token usage reduced.")
+        return True
+    except Exception as e:
+        print_error(f"Compact failed: {e}")
+        return False
+    finally:
+        compact_status.stop()
+
+
 def _setup_tools(allowed_groups: list[str]) -> tuple[ToolRegistry, ToolPolicy]:
     registry = ToolRegistry()
     register_builtins(registry)
@@ -362,40 +407,7 @@ async def _chat_loop(
                 if len(session.messages) < 2:
                     print_info("Nothing to compact.")
                     continue
-                compact_status = thinking_status()
-                compact_status.update("[dim]compacting conversation…[/dim]")
-                compact_status.start()
-                try:
-                    compact_prompt = (
-                        "Summarize this conversation concisely but completely. "
-                        "Preserve: key topics, decisions, important technical details, "
-                        "and any context needed to continue the conversation coherently. "
-                        "This summary will replace the full history to reduce token usage."
-                    )
-                    summary_result = await provider.complete(
-                        messages=list(session.messages) + [
-                            Message(role=Role.USER, content=compact_prompt)
-                        ],
-                        tools=None,
-                        system=config.system_prompt,
-                        max_tokens=2048,
-                    )
-                    summary = (
-                        summary_result.message.content
-                        if isinstance(summary_result.message.content, str)
-                        else ""
-                    )
-                    if not summary:
-                        print_info("Compact failed: no summary generated.")
-                        continue
-                    old_count = len(session.messages)
-                    session.compact(summary)
-                    compact_status.stop()
-                    print_info(f"Compacted {old_count} messages → 1 summary. Token usage reduced.")
-                except Exception as e:
-                    print_error(f"Compact failed: {e}")
-                finally:
-                    compact_status.stop()
+                await _do_compact(session, provider, system_prompt)
                 continue
 
             if cmd == "/session":
@@ -434,6 +446,7 @@ async def _chat_loop(
                 spinner_stopped = False
                 response_header_printed = False
                 streamed_parts: list[str] = []
+                last_input_tokens = 0
 
                 async def _on_before_tool(event: Event) -> None:
                     assert isinstance(event, BeforeToolCall)
@@ -472,6 +485,7 @@ async def _chat_loop(
                                 console.print()  # end the raw stream line
                                 rerender_as_markdown("".join(streamed_parts))
                             print_usage(event.usage.input_tokens, event.usage.output_tokens)
+                            last_input_tokens = event.usage.input_tokens
                 finally:
                     status.stop()
                     agent.event_bus.off("before_tool_call", _on_before_tool)
@@ -484,6 +498,17 @@ async def _chat_loop(
                 mcp_manager = await _process_mcp_requests(
                     agent, session, tool_registry, tool_policy, mcp_manager,
                 )
+
+                # Auto-compact when input tokens exceed threshold
+                if (
+                    config.session.auto_compact
+                    and last_input_tokens >= config.session.compact_token_threshold
+                ):
+                    print_info(
+                        f"[auto-compact] Input tokens ({last_input_tokens:,}) exceeded "
+                        f"threshold ({config.session.compact_token_threshold:,}). Compacting…"
+                    )
+                    await _do_compact(session, provider, system_prompt)
 
             except Exception as e:
                 print_error(str(e))
