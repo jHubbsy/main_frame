@@ -342,6 +342,46 @@ async def _chat_loop(
                 print_session_info(session.session_id, session.meta.turn_count)
                 continue
 
+            if cmd == "/compact":
+                if len(session.messages) < 2:
+                    print_info("Nothing to compact.")
+                    continue
+                compact_status = thinking_status()
+                compact_status.update("[dim]compacting conversation…[/dim]")
+                compact_status.start()
+                try:
+                    compact_prompt = (
+                        "Summarize this conversation concisely but completely. "
+                        "Preserve: key topics, decisions, important technical details, "
+                        "and any context needed to continue the conversation coherently. "
+                        "This summary will replace the full history to reduce token usage."
+                    )
+                    summary_result = await provider.complete(
+                        messages=list(session.messages) + [
+                            Message(role=Role.USER, content=compact_prompt)
+                        ],
+                        tools=None,
+                        system=config.system_prompt,
+                        max_tokens=2048,
+                    )
+                    summary = (
+                        summary_result.message.content
+                        if isinstance(summary_result.message.content, str)
+                        else ""
+                    )
+                    if not summary:
+                        print_info("Compact failed: no summary generated.")
+                        continue
+                    old_count = len(session.messages)
+                    session.compact(summary)
+                    compact_status.stop()
+                    print_info(f"Compacted {old_count} messages → 1 summary. Token usage reduced.")
+                except Exception as e:
+                    print_error(f"Compact failed: {e}")
+                finally:
+                    compact_status.stop()
+                continue
+
             if cmd == "/session":
                 print_session_info(session.session_id, session.meta.turn_count)
                 continue

@@ -123,6 +123,7 @@ def print_tool_result(tool_name: str, content: str, is_error: bool = False) -> N
 SLASH_COMMANDS: list[tuple[str, str]] = [
     ("/help", "Show available commands"),
     ("/clear", "Clear the screen"),
+    ("/compact", "Summarize conversation history to reduce token usage"),
     ("/session", "Show session ID and turn count"),
     ("/tools", "List available tools"),
     ("/quit", "Exit (also /exit or /q)"),

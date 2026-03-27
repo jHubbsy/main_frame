@@ -115,6 +115,25 @@ class Session:
         self._loaded = True
         return True
 
+    def compact(self, summary: str) -> None:
+        """Replace conversation history with a single summary message and rewrite disk state."""
+        summary_message = Message(
+            role=Role.USER,
+            content=(
+                "[Context Summary — conversation history compacted to reduce token usage]\n\n"
+                + summary
+            ),
+        )
+        self._messages = [summary_message]
+        self._meta.turn_count = 1
+        self._meta.updated_at = datetime.now(UTC).isoformat()
+
+        # Rewrite session file with only the summary
+        self._sessions_path.mkdir(parents=True, exist_ok=True)
+        with open(self.session_file, "w") as f:
+            f.write(json.dumps(self._serialize_message(summary_message)) + "\n")
+        self._save_meta()
+
     @classmethod
     def list_sessions(cls, sessions_path: Path | None = None) -> list[SessionMeta]:
         """List all saved sessions, most recent first."""
