@@ -20,6 +20,7 @@ from mainframe.cli.display import (
     print_tool_result,
     print_usage,
     print_welcome,
+    rerender_as_markdown,
     thinking_status,
 )
 from mainframe.cli.rich_input import RichInputHandler
@@ -376,6 +377,7 @@ async def _chat_loop(
                 status = thinking_status()
                 spinner_stopped = False
                 response_header_printed = False
+                streamed_parts: list[str] = []
 
                 async def _on_before_tool(event: Event) -> None:
                     assert isinstance(event, BeforeToolCall)
@@ -393,6 +395,7 @@ async def _chat_loop(
                             if not response_header_printed:
                                 print_response_header()
                                 response_header_printed = True
+                            streamed_parts.append(event.text)
                             print_assistant_text(event.text, streaming=True)
                         elif event.type == "tool_result" and event.tool_call:
                             if not spinner_stopped:
@@ -409,6 +412,9 @@ async def _chat_loop(
                             )
                             print_tool_result(event.tool_call.name, content, is_error)
                         elif event.type == "message_stop" and event.usage:
+                            if streamed_parts:
+                                console.print()  # end the raw stream line
+                                rerender_as_markdown("".join(streamed_parts))
                             print_usage(event.usage.input_tokens, event.usage.output_tokens)
                 finally:
                     status.stop()

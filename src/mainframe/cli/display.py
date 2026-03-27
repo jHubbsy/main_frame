@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -58,6 +60,32 @@ def print_assistant_text(text: str, *, streaming: bool = False) -> None:
         console.print(text, end="", highlight=False)
     else:
         console.print(Markdown(text))
+
+
+def rerender_as_markdown(text: str) -> None:
+    """Erase the raw streamed text on-screen and re-render it as Rich Markdown.
+
+    Caller must have just printed a bare newline (console.print()) to end the
+    streaming line before calling this — that newline is accounted for in the
+    cursor math below.
+    """
+    if not text.strip():
+        return
+
+    width = console.width
+    # Count terminal rows the raw text occupied (accounts for line-wrap).
+    line_count = sum(
+        max(1, math.ceil(len(seg) / width)) if seg else 1
+        for seg in text.split("\n")
+    )
+
+    # Cursor is on the blank line added after streaming ended.
+    # Move up line_count rows to the start of the raw text, go to column 0,
+    # then erase from cursor to end of screen.
+    console.file.write(f"\x1b[{line_count}A\r\x1b[0J")
+    console.file.flush()
+
+    console.print(Markdown(text))
 
 
 def print_error(message: str) -> None:
