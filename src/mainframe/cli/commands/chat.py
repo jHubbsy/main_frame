@@ -130,17 +130,31 @@ async def _process_mcp_requests(
 
 async def _ensure_mcp_credentials(server_name: str, required_env: list[str]) -> dict[str, str]:
     """Resolve required env vars from store or prompt the user. Returns resolved vars."""
+    import getpass as _getpass
+
     resolved: dict[str, str] = {}
     for var in required_env:
-        value = get_mcp_env_var(server_name, var)
-        if value:
-            resolved[var] = value
+        existing = get_mcp_env_var(server_name, var)
+        if existing:
+            print_info(f"MCP server '{server_name}': {var} already stored — press Enter to keep or paste a new value.")
+            try:
+                new_value = await asyncio.to_thread(_getpass.getpass, f"  {var} (leave blank to keep): ")
+            except (EOFError, KeyboardInterrupt):
+                print_info("\nSkipped.")
+                resolved[var] = existing
+                continue
+            new_value = new_value.strip()
+            if not new_value:
+                resolved[var] = existing
+                continue
+            store_mcp_env_var(server_name, var, new_value)
+            resolved[var] = new_value
+            print_info(f"  {var} updated.")
             continue
 
         print_info(f"MCP server '{server_name}' requires {var}.")
         try:
-            import getpass
-            value = await asyncio.to_thread(getpass.getpass, f"  Enter {var}: ")
+            value = await asyncio.to_thread(_getpass.getpass, f"  Enter {var}: ")
         except (EOFError, KeyboardInterrupt):
             print_info("\nSkipped.")
             continue
